@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
+import '../theme/app_theme.dart';
 import 'home_screen.dart';
 import 'sign_in_screen.dart';
 import 'sign_up_screen.dart';
@@ -23,7 +24,14 @@ class _AuthGateScreenState extends State<AuthGateScreen> {
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
+            body: DecoratedBox(
+              decoration: BoxDecoration(gradient: AppTheme.screenGradient),
+              child: Center(
+                child: CircularProgressIndicator(
+                  color: AppTheme.secondaryAccentBlue,
+                ),
+              ),
+            ),
           );
         }
 

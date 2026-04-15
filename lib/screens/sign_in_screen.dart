@@ -89,6 +89,7 @@ class _SignInScreenState extends State<SignInScreen> {
             CustomTextField(
               label: 'Email',
               hintText: 'you@example.com',
+              prefixIcon: Icons.mail_outline_rounded,
               controller: _emailController,
               keyboardType: TextInputType.emailAddress,
               textInputAction: TextInputAction.next,
@@ -104,6 +105,7 @@ class _SignInScreenState extends State<SignInScreen> {
             CustomTextField(
               label: 'Password',
               hintText: 'Enter your password',
+              prefixIcon: Icons.lock_outline_rounded,
               controller: _passwordController,
               obscureText: true,
               textInputAction: TextInputAction.done,
@@ -133,7 +135,7 @@ class _SignInScreenState extends State<SignInScreen> {
                     child: const Text(
                       'Create one',
                       style: TextStyle(
-                        color: AppTheme.darkGreen,
+                        color: AppTheme.secondaryAccentBlue,
                         fontWeight: FontWeight.w600,
                       ),
                     ),

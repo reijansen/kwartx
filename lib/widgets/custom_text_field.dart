@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_theme.dart';
+
 class CustomTextField extends StatefulWidget {
   const CustomTextField({
     super.key,
@@ -12,6 +14,8 @@ class CustomTextField extends StatefulWidget {
     this.enabled = true,
     this.validator,
     this.onFieldSubmitted,
+    this.prefixIcon,
+    this.maxLines = 1,
   });
 
   final String label;
@@ -23,6 +27,8 @@ class CustomTextField extends StatefulWidget {
   final bool enabled;
   final String? Function(String?)? validator;
   final ValueChanged<String>? onFieldSubmitted;
+  final IconData? prefixIcon;
+  final int maxLines;
 
   @override
   State<CustomTextField> createState() => _CustomTextFieldState();
@@ -49,9 +55,14 @@ class _CustomTextFieldState extends State<CustomTextField> {
       obscureText: _isObscured,
       validator: widget.validator,
       onFieldSubmitted: widget.onFieldSubmitted,
+      maxLines: widget.obscureText ? 1 : widget.maxLines,
+      style: const TextStyle(color: AppTheme.textPrimary, fontSize: 15),
       decoration: InputDecoration(
         labelText: widget.label,
         hintText: widget.hintText,
+        prefixIcon: widget.prefixIcon == null
+            ? null
+            : Icon(widget.prefixIcon, color: AppTheme.mutedText),
         suffixIcon: hasToggle
             ? IconButton(
                 onPressed: () {
@@ -63,6 +74,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
                   _isObscured
                       ? Icons.visibility_rounded
                       : Icons.visibility_off_rounded,
+                  color: AppTheme.mutedText,
                 ),
               )
             : null,
