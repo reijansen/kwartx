@@ -24,7 +24,20 @@ class _HomeScreenState extends State<HomeScreen> {
     symbol: '₱',
     decimalDigits: 2,
   );
+  final TextEditingController _searchController = TextEditingController();
   bool _isSigningOut = false;
+  String _searchQuery = '';
+  String _selectedCategory = _allCategoriesKey;
+  _ExpenseSortOption _sortOption = _ExpenseSortOption.newestFirst;
+  _ExpenseDateFilter _dateFilter = _ExpenseDateFilter.allTime;
+
+  static const String _allCategoriesKey = 'All';
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(_onSearchChanged);
+  }
 
   Future<void> _handleSignOut() async {
     setState(() {
@@ -47,6 +60,14 @@ class _HomeScreenState extends State<HomeScreen> {
         });
       }
     }
+  }
+
+  @override
+  void dispose() {
+    _searchController
+      ..removeListener(_onSearchChanged)
+      ..dispose();
+    super.dispose();
   }
 
   Future<void> _openExpenseForm({
@@ -108,6 +129,16 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _onSearchChanged() {
+    final nextValue = _searchController.text.trim();
+    if (_searchQuery == nextValue) {
+      return;
+    }
+    setState(() {
+      _searchQuery = nextValue;
+    });
+  }
+
   String _safeLabel(String? raw, String fallback) {
     final value = raw?.trim() ?? '';
     return value.isEmpty ? fallback : value;
@@ -117,6 +148,102 @@ class _HomeScreenState extends State<HomeScreen> {
 
   double _amountPerPerson(ExpenseModel expense) {
     return expense.amount / _safeSplitCount(expense.splitCount);
+  }
+
+  DateTime _startOfWeek(DateTime date) {
+    final normalized = DateTime(date.year, date.month, date.day);
+    return normalized.subtract(Duration(days: normalized.weekday - 1));
+  }
+
+  bool _matchesDateFilter(ExpenseModel expense, _ExpenseDateFilter filter) {
+    if (filter == _ExpenseDateFilter.allTime) {
+      return true;
+    }
+
+    final now = DateTime.now();
+    if (filter == _ExpenseDateFilter.thisMonth) {
+      return expense.createdAt.year == now.year &&
+          expense.createdAt.month == now.month;
+    }
+
+    final weekStart = _startOfWeek(now);
+    final expenseDate = DateTime(
+      expense.createdAt.year,
+      expense.createdAt.month,
+      expense.createdAt.day,
+    );
+    return !expenseDate.isBefore(weekStart);
+  }
+
+  List<String> _deriveCategories(List<ExpenseModel> expenses) {
+    final categories = expenses
+        .map((expense) => _safeLabel(expense.category, 'General'))
+        .toSet()
+        .toList()
+      ..sort();
+    return [_allCategoriesKey, ...categories];
+  }
+
+  List<ExpenseModel> _applyFiltersAndSort(
+    List<ExpenseModel> source, {
+    required String categoryFilter,
+  }) {
+    final query = _searchQuery.toLowerCase();
+    final filtered = source.where((expense) {
+      final category = _safeLabel(expense.category, 'General');
+      final paidBy = _safeLabel(expense.paidBy, 'Unknown payer');
+      final title = expense.title.trim();
+
+      if (categoryFilter != _allCategoriesKey && category != categoryFilter) {
+        return false;
+      }
+
+      if (!_matchesDateFilter(expense, _dateFilter)) {
+        return false;
+      }
+
+      if (query.isEmpty) {
+        return true;
+      }
+
+      return title.toLowerCase().contains(query) ||
+          paidBy.toLowerCase().contains(query) ||
+          category.toLowerCase().contains(query);
+    }).toList();
+
+    switch (_sortOption) {
+      case _ExpenseSortOption.newestFirst:
+        filtered.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        break;
+      case _ExpenseSortOption.oldestFirst:
+        filtered.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+        break;
+      case _ExpenseSortOption.highestAmount:
+        filtered.sort((a, b) => b.amount.compareTo(a.amount));
+        break;
+      case _ExpenseSortOption.lowestAmount:
+        filtered.sort((a, b) => a.amount.compareTo(b.amount));
+        break;
+    }
+
+    return filtered;
+  }
+
+  bool get _hasActiveFilters {
+    return _searchQuery.isNotEmpty ||
+        _selectedCategory != _allCategoriesKey ||
+        _dateFilter != _ExpenseDateFilter.allTime ||
+        _sortOption != _ExpenseSortOption.newestFirst;
+  }
+
+  void _resetFilters() {
+    setState(() {
+      _searchController.clear();
+      _searchQuery = '';
+      _selectedCategory = _allCategoriesKey;
+      _dateFilter = _ExpenseDateFilter.allTime;
+      _sortOption = _ExpenseSortOption.newestFirst;
+    });
   }
 
   _DashboardSummary _buildSummary(List<ExpenseModel> expenses) {
@@ -232,7 +359,27 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               }
 
-              final expenses = snapshot.data ?? [];
+              final allExpenses = snapshot.data ?? [];
+              final categories = _deriveCategories(allExpenses);
+              final effectiveCategory = categories.contains(_selectedCategory)
+                  ? _selectedCategory
+                  : _allCategoriesKey;
+
+              if (effectiveCategory != _selectedCategory) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (!mounted) {
+                    return;
+                  }
+                  setState(() {
+                    _selectedCategory = effectiveCategory;
+                  });
+                });
+              }
+
+              final expenses = _applyFiltersAndSort(
+                allExpenses,
+                categoryFilter: effectiveCategory,
+              );
               final summary = _buildSummary(expenses);
               final topPayer = summary.payerTotals.isEmpty
                   ? null
@@ -282,6 +429,151 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                   const SizedBox(height: 18),
+                  TextField(
+                    controller: _searchController,
+                    style: textTheme.bodyMedium,
+                    decoration: InputDecoration(
+                      hintText: 'Search by title, payer, or category',
+                      prefixIcon: const Icon(Icons.search_rounded),
+                      suffixIcon: _searchQuery.isEmpty
+                          ? null
+                          : IconButton(
+                              icon: const Icon(Icons.close_rounded),
+                              onPressed: () {
+                                _searchController.clear();
+                              },
+                            ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: AppTheme.cardBackground.withAlpha(210),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: AppTheme.glowOutlineBlue.withAlpha(70),
+                            ),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              value: effectiveCategory,
+                              dropdownColor: AppTheme.cardBackground,
+                              iconEnabledColor: AppTheme.textSecondary,
+                              style: textTheme.bodyMedium,
+                              isExpanded: true,
+                              items: categories
+                                  .map(
+                                    (category) => DropdownMenuItem<String>(
+                                      value: category,
+                                      child: Text(
+                                        category == _allCategoriesKey
+                                            ? 'Category: All'
+                                            : category,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (value) {
+                                if (value == null) {
+                                  return;
+                                }
+                                setState(() {
+                                  _selectedCategory = value;
+                                });
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: AppTheme.navOverlay,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: AppTheme.glowOutlineBlue.withAlpha(90),
+                          ),
+                        ),
+                        child: PopupMenuButton<_ExpenseSortOption>(
+                          tooltip: 'Sort',
+                          color: AppTheme.cardBackground,
+                          icon: const Icon(
+                            Icons.sort_rounded,
+                            color: AppTheme.textSecondary,
+                          ),
+                          onSelected: (value) {
+                            setState(() {
+                              _sortOption = value;
+                            });
+                          },
+                          itemBuilder: (context) {
+                            return _ExpenseSortOption.values.map((option) {
+                              return PopupMenuItem<_ExpenseSortOption>(
+                                value: option,
+                                child: Row(
+                                  children: [
+                                    Expanded(child: Text(option.label)),
+                                    if (_sortOption == option)
+                                      const Icon(
+                                        Icons.check_rounded,
+                                        size: 16,
+                                        color: AppTheme.secondaryAccentBlue,
+                                      ),
+                                  ],
+                                ),
+                              );
+                            }).toList();
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _ExpenseDateFilter.values.map((option) {
+                      final selected = _dateFilter == option;
+                      return ChoiceChip(
+                        label: Text(option.label),
+                        selected: selected,
+                        onSelected: (_) {
+                          setState(() {
+                            _dateFilter = option;
+                          });
+                        },
+                        selectedColor: AppTheme.glowOutlineBlue.withAlpha(80),
+                        backgroundColor: AppTheme.navOverlay,
+                        side: BorderSide(
+                          color: selected
+                              ? AppTheme.secondaryAccentBlue
+                              : AppTheme.glowOutlineBlue.withAlpha(70),
+                        ),
+                        labelStyle: textTheme.bodySmall?.copyWith(
+                          color: selected
+                              ? AppTheme.textPrimary
+                              : AppTheme.textSecondary,
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  if (_hasActiveFilters) ...[
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton.icon(
+                        onPressed: _resetFilters,
+                        icon: const Icon(Icons.restart_alt_rounded, size: 18),
+                        label: const Text('Reset filters'),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 8),
                   DarkCard(
                     radius: 20,
                     padding: const EdgeInsets.all(20),
@@ -295,7 +587,12 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        Text('All time', style: textTheme.titleMedium),
+                        Text(
+                          _hasActiveFilters
+                              ? 'Current results'
+                              : 'All time results',
+                          style: textTheme.titleMedium,
+                        ),
                         const SizedBox(height: 12),
                         Text(
                           _currencyFormatter.format(summary.totalAmount),
@@ -513,7 +810,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 20),
                   Text('Recent expenses', style: textTheme.titleMedium),
                   const SizedBox(height: 12),
-                  if (expenses.isEmpty)
+                  if (allExpenses.isEmpty)
                     DarkCard(
                       radius: 16,
                       child: Padding(
@@ -524,6 +821,30 @@ class _HomeScreenState extends State<HomeScreen> {
                             color: AppTheme.mutedText,
                           ),
                           textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                  if (allExpenses.isNotEmpty && expenses.isEmpty)
+                    DarkCard(
+                      radius: 16,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 20),
+                        child: Column(
+                          children: [
+                            Text(
+                              'No matching expenses found.',
+                              style: textTheme.bodyMedium,
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Try changing your search or filters.',
+                              style: textTheme.bodySmall?.copyWith(
+                                color: AppTheme.mutedText,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -640,6 +961,25 @@ class _DashboardSummary {
   final int monthCount;
   final List<MapEntry<String, double>> payerTotals;
   final List<MapEntry<String, double>> categoryTotals;
+}
+
+enum _ExpenseSortOption {
+  newestFirst('Newest first'),
+  oldestFirst('Oldest first'),
+  highestAmount('Highest amount'),
+  lowestAmount('Lowest amount');
+
+  const _ExpenseSortOption(this.label);
+  final String label;
+}
+
+enum _ExpenseDateFilter {
+  allTime('All time'),
+  thisWeek('This week'),
+  thisMonth('This month');
+
+  const _ExpenseDateFilter(this.label);
+  final String label;
 }
 
 class _QuickAction extends StatelessWidget {
