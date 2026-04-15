@@ -1,8 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 import '../widgets/app_loading_indicator.dart';
-import 'auth_gate_screen.dart';
+import 'landing_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -12,24 +14,36 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  Timer? _navigationTimer;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) {
-        return;
-      }
-      Navigator.of(context).pushReplacement(
-        PageRouteBuilder<void>(
-          pageBuilder: (context, animation, secondaryAnimation) =>
-              const AuthGateScreen(),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(opacity: animation, child: child);
-          },
-          transitionDuration: const Duration(milliseconds: 240),
-        ),
-      );
+      _navigationTimer = Timer(const Duration(milliseconds: 1100), () {
+        if (!mounted) {
+          return;
+        }
+        Navigator.of(context).pushReplacement(
+          PageRouteBuilder<void>(
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                const LandingScreen(),
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+              return FadeTransition(opacity: animation, child: child);
+            },
+            transitionDuration: const Duration(milliseconds: 240),
+          ),
+        );
+      });
     });
+  }
+
+  @override
+  void dispose() {
+    _navigationTimer?.cancel();
+    _navigationTimer = null;
+    super.dispose();
   }
 
   @override

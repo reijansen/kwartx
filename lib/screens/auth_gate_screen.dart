@@ -8,7 +8,9 @@ import 'sign_in_screen.dart';
 import 'sign_up_screen.dart';
 
 class AuthGateScreen extends StatefulWidget {
-  const AuthGateScreen({super.key});
+  const AuthGateScreen({super.key, this.startOnSignUp = false});
+
+  final bool startOnSignUp;
 
   @override
   State<AuthGateScreen> createState() => _AuthGateScreenState();
@@ -16,7 +18,13 @@ class AuthGateScreen extends StatefulWidget {
 
 class _AuthGateScreenState extends State<AuthGateScreen> {
   final AuthService _authService = AuthService();
-  bool _showSignUp = false;
+  late bool _showSignUp;
+
+  @override
+  void initState() {
+    super.initState();
+    _showSignUp = widget.startOnSignUp;
+  }
 
   @override
   Widget build(BuildContext context) {
