@@ -13,6 +13,7 @@ import '../widgets/app_feedback.dart';
 import '../widgets/app_loading_indicator.dart';
 import '../widgets/dark_card.dart';
 import 'expense_form_screen.dart';
+import 'invite_roommate_screen.dart';
 import 'report_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -100,17 +101,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   List<String> _deriveCategories(List<ExpenseModel> expenses) {
-    final categories = expenses
-        .map(
-          (expense) => _safeLabel(
-            expense.category,
-            AppConstants.defaultCategory,
-          ),
-        )
-        .followedBy(AppConstants.expenseCategories)
-        .toSet()
-        .toList()
-      ..sort();
+    final categories =
+        expenses
+            .map(
+              (expense) =>
+                  _safeLabel(expense.category, AppConstants.defaultCategory),
+            )
+            .followedBy(AppConstants.expenseCategories)
+            .toSet()
+            .toList()
+          ..sort();
     return [_allCategoriesKey, ...categories];
   }
 
@@ -227,8 +227,7 @@ class _HomeScreenState extends State<HomeScreen> {
       PageRouteBuilder<void>(
         pageBuilder: (context, animation, secondaryAnimation) =>
             ExpenseFormScreen(title: title, existingExpense: expense),
-        transitionsBuilder:
-            (context, animation, secondaryAnimation, child) {
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
           final offsetTween = Tween<Offset>(
             begin: const Offset(0, 0.03),
             end: Offset.zero,
@@ -264,8 +263,7 @@ class _HomeScreenState extends State<HomeScreen> {
       PageRouteBuilder<void>(
         pageBuilder: (context, animation, secondaryAnimation) =>
             ReportScreen(expenses: expenses),
-        transitionsBuilder:
-            (context, animation, secondaryAnimation, child) {
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(
             opacity: CurvedAnimation(
               parent: animation,
@@ -276,6 +274,12 @@ class _HomeScreenState extends State<HomeScreen> {
         },
         transitionDuration: const Duration(milliseconds: 220),
       ),
+    );
+  }
+
+  Future<void> _openInvites() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const InviteRoommateScreen()),
     );
   }
 
@@ -368,7 +372,9 @@ class _HomeScreenState extends State<HomeScreen> {
       categoryFilter: effectiveCategory,
     );
     final summary = _buildSummary(expenses);
-    final topPayer = summary.payerTotals.isEmpty ? null : summary.payerTotals.first;
+    final topPayer = summary.payerTotals.isEmpty
+        ? null
+        : summary.payerTotals.first;
 
     return _DashboardBody(
       textTheme: textTheme,
@@ -395,10 +401,8 @@ class _HomeScreenState extends State<HomeScreen> {
       onSplitBill: () => _openExpenseForm(title: 'Split Bill'),
       onSummaryTap: () => _openReport(allExpenses),
       onMoreTap: _resetFilters,
-      onEditExpense: (expense) => _openExpenseForm(
-        title: 'Edit Expense',
-        expense: expense,
-      ),
+      onEditExpense: (expense) =>
+          _openExpenseForm(title: 'Edit Expense', expense: expense),
       onDeleteExpense: _deleteExpense,
       onConfirmDelete: _confirmDelete,
       amountPerPerson: _amountPerPerson,
@@ -431,6 +435,11 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: const Text('KwartX'),
         actions: [
+          IconButton(
+            onPressed: _openInvites,
+            tooltip: 'Roommate invites',
+            icon: const Icon(Icons.group_add_rounded),
+          ),
           IconButton(
             onPressed: _isSigningOut ? null : _handleSignOut,
             tooltip: 'Logout',
@@ -683,7 +692,9 @@ class _DashboardBody extends StatelessWidget {
                       : AppTheme.glowOutlineBlue.withAlpha(70),
                 ),
                 labelStyle: textTheme.bodySmall?.copyWith(
-                  color: selected ? AppTheme.textPrimary : AppTheme.textSecondary,
+                  color: selected
+                      ? AppTheme.textPrimary
+                      : AppTheme.textSecondary,
                 ),
               );
             }).toList(),
@@ -749,7 +760,9 @@ class _DashboardBody extends StatelessWidget {
                 child: _SummaryTile(
                   title: 'Top payer',
                   value: topPayer?.key ?? 'No data',
-                  subtitle: topPayer == null ? '-' : formatCurrency(topPayer!.value),
+                  subtitle: topPayer == null
+                      ? '-'
+                      : formatCurrency(topPayer!.value),
                 ),
               ),
             ],
@@ -760,10 +773,26 @@ class _DashboardBody extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _QuickAction(icon: Icons.add_circle_outline_rounded, label: 'Add', onTap: onAddExpense),
-              _QuickAction(icon: Icons.call_split_rounded, label: 'Split', onTap: onSplitBill),
-              _QuickAction(icon: Icons.bar_chart_rounded, label: 'Report', onTap: onSummaryTap),
-              _QuickAction(icon: Icons.restart_alt_rounded, label: 'Reset', onTap: onMoreTap),
+              _QuickAction(
+                icon: Icons.add_circle_outline_rounded,
+                label: 'Add',
+                onTap: onAddExpense,
+              ),
+              _QuickAction(
+                icon: Icons.call_split_rounded,
+                label: 'Split',
+                onTap: onSplitBill,
+              ),
+              _QuickAction(
+                icon: Icons.bar_chart_rounded,
+                label: 'Report',
+                onTap: onSummaryTap,
+              ),
+              _QuickAction(
+                icon: Icons.restart_alt_rounded,
+                label: 'Reset',
+                onTap: onMoreTap,
+              ),
             ],
           ),
           const SizedBox(height: 18),
@@ -784,7 +813,9 @@ class _DashboardBody extends StatelessWidget {
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 220),
             child: _ExpensesListBody(
-              key: ValueKey('list_${allExpenses.length}_${visibleExpenses.length}_$searchQuery'),
+              key: ValueKey(
+                'list_${allExpenses.length}_${visibleExpenses.length}_$searchQuery',
+              ),
               allExpenses: allExpenses,
               visibleExpenses: visibleExpenses,
               onAddFirstExpense: onAddExpense,
@@ -909,10 +940,7 @@ class _GroupedSection extends StatelessWidget {
 }
 
 class _CategorySection extends StatelessWidget {
-  const _CategorySection({
-    required this.entries,
-    required this.formatCurrency,
-  });
+  const _CategorySection({required this.entries, required this.formatCurrency});
 
   final List<MapEntry<String, double>> entries;
   final String Function(num value) formatCurrency;
@@ -1041,7 +1069,10 @@ class _ExpensesListBody extends StatelessWidget {
               onTap: () => onEditExpense(expense),
               child: DarkCard(
                 radius: 16,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
                 child: Row(
                   children: [
                     Expanded(

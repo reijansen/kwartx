@@ -80,10 +80,7 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
     final amount = _parseAmount(_amountController.text);
     final splitCount = int.tryParse(_splitCountController.text.trim());
     if (amount == null || amount <= 0) {
-      _showMessage(
-        'Please enter a valid amount.',
-        type: AppFeedbackType.error,
-      );
+      _showMessage('Please enter a valid amount.', type: AppFeedbackType.error);
       return;
     }
     if (splitCount == null || splitCount <= 0) {
@@ -152,7 +149,10 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
     return double.tryParse(normalized);
   }
 
-  void _showMessage(String message, {AppFeedbackType type = AppFeedbackType.info}) {
+  void _showMessage(
+    String message, {
+    AppFeedbackType type = AppFeedbackType.info,
+  }) {
     if (!mounted) {
       return;
     }

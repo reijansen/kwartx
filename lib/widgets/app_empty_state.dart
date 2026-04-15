@@ -35,7 +35,9 @@ class AppEmptyState extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppTheme.navOverlay,
                 shape: BoxShape.circle,
-                border: Border.all(color: AppTheme.glowOutlineBlue.withAlpha(80)),
+                border: Border.all(
+                  color: AppTheme.glowOutlineBlue.withAlpha(80),
+                ),
               ),
               child: Icon(icon, color: AppTheme.secondaryAccentBlue),
             ),
@@ -53,10 +55,7 @@ class AppEmptyState extends StatelessWidget {
             ),
             if (actionLabel != null && onActionPressed != null) ...[
               const SizedBox(height: 12),
-              TextButton(
-                onPressed: onActionPressed,
-                child: Text(actionLabel!),
-              ),
+              TextButton(onPressed: onActionPressed, child: Text(actionLabel!)),
             ],
           ],
         ),

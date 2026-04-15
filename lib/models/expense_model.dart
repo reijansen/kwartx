@@ -61,10 +61,7 @@ class ExpenseModel {
       id: id,
       title: _readString(map['title'], fallback: 'Untitled expense'),
       amount: amount.isNegative ? 0 : amount,
-      paidBy: _readString(
-        map['paidBy'],
-        fallback: AppConstants.unknownPayer,
-      ),
+      paidBy: _readString(map['paidBy'], fallback: AppConstants.unknownPayer),
       splitCount: splitCount <= 0 ? 1 : splitCount,
       category: _readString(
         map['category'],

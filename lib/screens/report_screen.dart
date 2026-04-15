@@ -10,10 +10,7 @@ import '../widgets/app_feedback.dart';
 import '../widgets/dark_card.dart';
 
 class ReportScreen extends StatefulWidget {
-  const ReportScreen({
-    super.key,
-    required this.expenses,
-  });
+  const ReportScreen({super.key, required this.expenses});
 
   final List<ExpenseModel> expenses;
 
@@ -88,10 +85,7 @@ class _ReportScreenState extends State<ReportScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'KwartX Expense Report',
-                      style: textTheme.titleLarge,
-                    ),
+                    Text('KwartX Expense Report', style: textTheme.titleLarge),
                     const SizedBox(height: 6),
                     Text(
                       'Select scope and review your summary before sharing.',
@@ -193,10 +187,7 @@ class _ReportScreenState extends State<ReportScreen> {
 }
 
 class _ReportMetricCard extends StatelessWidget {
-  const _ReportMetricCard({
-    required this.title,
-    required this.value,
-  });
+  const _ReportMetricCard({required this.title, required this.value});
 
   final String title;
   final String value;

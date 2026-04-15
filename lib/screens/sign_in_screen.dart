@@ -56,10 +56,7 @@ class _SignInScreenState extends State<SignInScreen> {
       );
     } on FirebaseAuthException catch (error) {
       _showMessage(
-        mapFirebaseAuthException(
-          error,
-          includeDebugDetails: kDebugMode,
-        ),
+        mapFirebaseAuthException(error, includeDebugDetails: kDebugMode),
         type: AppFeedbackType.error,
       );
     } catch (_) {
@@ -76,7 +73,10 @@ class _SignInScreenState extends State<SignInScreen> {
     }
   }
 
-  void _showMessage(String message, {AppFeedbackType type = AppFeedbackType.info}) {
+  void _showMessage(
+    String message, {
+    AppFeedbackType type = AppFeedbackType.info,
+  }) {
     if (!mounted) {
       return;
     }

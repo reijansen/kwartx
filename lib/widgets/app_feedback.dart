@@ -14,17 +14,17 @@ void showAppSnackBar(
 
   final style = switch (type) {
     AppFeedbackType.success => (
-        icon: Icons.check_circle_rounded,
-        color: AppTheme.successGreen
-      ),
+      icon: Icons.check_circle_rounded,
+      color: AppTheme.successGreen,
+    ),
     AppFeedbackType.error => (
-        icon: Icons.error_rounded,
-        color: AppTheme.dangerRed
-      ),
+      icon: Icons.error_rounded,
+      color: AppTheme.dangerRed,
+    ),
     AppFeedbackType.info => (
-        icon: Icons.info_rounded,
-        color: AppTheme.secondaryAccentBlue
-      ),
+      icon: Icons.info_rounded,
+      color: AppTheme.secondaryAccentBlue,
+    ),
   };
 
   messenger.showSnackBar(

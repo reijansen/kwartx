@@ -73,7 +73,10 @@ class ExpenseReportService {
       now: now,
     );
 
-    final total = filtered.fold<double>(0, (sum, expense) => sum + expense.amount);
+    final total = filtered.fold<double>(
+      0,
+      (sum, expense) => sum + expense.amount,
+    );
     final monthTotal = monthOnly.fold<double>(
       0,
       (sum, expense) => sum + expense.amount,
