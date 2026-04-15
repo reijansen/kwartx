@@ -50,6 +50,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
     return TextFormField(
       controller: widget.controller,
       enabled: widget.enabled,
+      onTapOutside: (_) => FocusScope.of(context).unfocus(),
       keyboardType: widget.keyboardType,
       textInputAction: widget.textInputAction,
       obscureText: _isObscured,

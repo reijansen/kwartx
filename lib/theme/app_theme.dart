@@ -137,6 +137,7 @@ class AppTheme {
     snackBarTheme: const SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
       backgroundColor: navOverlay,
+      elevation: 0,
       contentTextStyle: TextStyle(color: textPrimary),
     ),
   );

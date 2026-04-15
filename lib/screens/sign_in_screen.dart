@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../services/auth_error_mapper.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_feedback.dart';
 import '../widgets/auth_shell.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/primary_button.dart';
@@ -37,6 +38,8 @@ class _SignInScreenState extends State<SignInScreen> {
   }
 
   Future<void> _handleSignIn() async {
+    FocusScope.of(context).unfocus();
+
     final form = _formKey.currentState;
     if (form == null || !form.validate()) {
       return;
@@ -57,9 +60,13 @@ class _SignInScreenState extends State<SignInScreen> {
           error,
           includeDebugDetails: kDebugMode,
         ),
+        type: AppFeedbackType.error,
       );
     } catch (_) {
-      _showMessage('Something went wrong. Please try again.');
+      _showMessage(
+        'Something went wrong. Please try again.',
+        type: AppFeedbackType.error,
+      );
     } finally {
       if (mounted) {
         setState(() {
@@ -69,13 +76,11 @@ class _SignInScreenState extends State<SignInScreen> {
     }
   }
 
-  void _showMessage(String message) {
+  void _showMessage(String message, {AppFeedbackType type = AppFeedbackType.info}) {
     if (!mounted) {
       return;
     }
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    showAppSnackBar(context, message: message, type: type);
   }
 
   @override
@@ -89,6 +94,7 @@ class _SignInScreenState extends State<SignInScreen> {
           'Track shared expenses, settle balances, and stay in sync with your group.',
       child: Form(
         key: _formKey,
+        autovalidateMode: AutovalidateMode.onUserInteraction,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [

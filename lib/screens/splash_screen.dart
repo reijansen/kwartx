@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import '../widgets/app_loading_indicator.dart';
 import 'auth_gate_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -19,7 +20,15 @@ class _SplashScreenState extends State<SplashScreen> {
         return;
       }
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute<void>(builder: (_) => const AuthGateScreen()),
+        PageRouteBuilder<void>(
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              const AuthGateScreen(),
+          transitionsBuilder:
+              (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+          transitionDuration: const Duration(milliseconds: 240),
+        ),
       );
     });
   }
@@ -71,14 +80,7 @@ class _SplashScreenState extends State<SplashScreen> {
                     style: textTheme.bodyMedium,
                   ),
                   const SizedBox(height: 24),
-                  const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.4,
-                      color: AppTheme.secondaryAccentBlue,
-                    ),
-                  ),
+                  const AppLoadingIndicator(),
                 ],
               ),
             ),

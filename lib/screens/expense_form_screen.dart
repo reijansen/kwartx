@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../models/expense_model.dart';
 import '../services/firestore_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_feedback.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/dark_card.dart';
 import '../widgets/primary_button.dart';
@@ -62,6 +63,8 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
   }
 
   Future<void> _saveExpense() async {
+    FocusScope.of(context).unfocus();
+
     final form = _formKey.currentState;
     if (form == null || !form.validate()) {
       return;
@@ -70,11 +73,17 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
     final amount = double.tryParse(_amountController.text.trim());
     final splitCount = int.tryParse(_splitCountController.text.trim());
     if (amount == null || amount <= 0) {
-      _showMessage('Please enter a valid amount.');
+      _showMessage(
+        'Please enter a valid amount.',
+        type: AppFeedbackType.error,
+      );
       return;
     }
     if (splitCount == null || splitCount <= 0) {
-      _showMessage('Split count must be at least 1.');
+      _showMessage(
+        'Split count must be at least 1.',
+        type: AppFeedbackType.error,
+      );
       return;
     }
 
@@ -107,12 +116,21 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
       if (!mounted) {
         return;
       }
-      _showMessage(_isEditMode ? 'Expense updated.' : 'Expense added.');
+      _showMessage(
+        _isEditMode ? 'Expense updated.' : 'Expense added.',
+        type: AppFeedbackType.success,
+      );
       Navigator.of(context).pop();
     } on FirebaseException {
-      _showMessage('Unable to save expense right now.');
+      _showMessage(
+        'Unable to save expense right now.',
+        type: AppFeedbackType.error,
+      );
     } catch (_) {
-      _showMessage('Something went wrong while saving expense.');
+      _showMessage(
+        'Something went wrong while saving expense.',
+        type: AppFeedbackType.error,
+      );
     } finally {
       if (mounted) {
         setState(() {
@@ -122,13 +140,11 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
     }
   }
 
-  void _showMessage(String message) {
+  void _showMessage(String message, {AppFeedbackType type = AppFeedbackType.info}) {
     if (!mounted) {
       return;
     }
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    showAppSnackBar(context, message: message, type: type);
   }
 
   @override
@@ -137,107 +153,129 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
 
     return Scaffold(
       appBar: AppBar(title: Text(widget.title)),
-      body: Container(
-        decoration: const BoxDecoration(gradient: AppTheme.screenGradient),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: DarkCard(
-              radius: 20,
-              padding: const EdgeInsets.all(16),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text('Expense details', style: textTheme.titleLarge),
-                    const SizedBox(height: 14),
-                    CustomTextField(
-                      label: 'Title',
-                      hintText: 'Dinner, groceries, transport...',
-                      prefixIcon: Icons.receipt_long_rounded,
-                      controller: _titleController,
-                      enabled: !_isSaving,
-                      textInputAction: TextInputAction.next,
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Title is required.';
-                        }
-                        return null;
-                      },
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: Container(
+          decoration: const BoxDecoration(gradient: AppTheme.screenGradient),
+          child: SafeArea(
+            child: AnimatedPadding(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutCubic,
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+              ),
+              child: SingleChildScrollView(
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                padding: const EdgeInsets.all(16),
+                child: DarkCard(
+                  radius: 20,
+                  padding: const EdgeInsets.all(16),
+                  child: Form(
+                    key: _formKey,
+                    autovalidateMode: AutovalidateMode.onUserInteraction,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text('Expense details', style: textTheme.titleLarge),
+                        const SizedBox(height: 8),
+                        Text(
+                          _isEditMode
+                              ? 'Update the fields below to save changes.'
+                              : 'Fill in the fields below to add an expense.',
+                          style: textTheme.bodySmall?.copyWith(
+                            color: AppTheme.mutedText,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        CustomTextField(
+                          label: 'Title',
+                          hintText: 'Dinner, groceries, transport...',
+                          prefixIcon: Icons.receipt_long_rounded,
+                          controller: _titleController,
+                          enabled: !_isSaving,
+                          textInputAction: TextInputAction.next,
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Title is required.';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 14),
+                        CustomTextField(
+                          label: 'Amount',
+                          hintText: '0.00',
+                          prefixIcon: Icons.currency_exchange_rounded,
+                          controller: _amountController,
+                          enabled: !_isSaving,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          textInputAction: TextInputAction.next,
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Amount is required.';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 14),
+                        CustomTextField(
+                          label: 'Paid By',
+                          hintText: 'Who paid?',
+                          prefixIcon: Icons.person_outline_rounded,
+                          controller: _paidByController,
+                          enabled: !_isSaving,
+                          textInputAction: TextInputAction.next,
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Paid by is required.';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 14),
+                        CustomTextField(
+                          label: 'Split Count',
+                          hintText: '2',
+                          prefixIcon: Icons.group_outlined,
+                          controller: _splitCountController,
+                          enabled: !_isSaving,
+                          keyboardType: TextInputType.number,
+                          textInputAction: TextInputAction.next,
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Split count is required.';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 14),
+                        CustomTextField(
+                          label: 'Category',
+                          hintText: 'General',
+                          prefixIcon: Icons.category_outlined,
+                          controller: _categoryController,
+                          enabled: !_isSaving,
+                          textInputAction: TextInputAction.done,
+                          onFieldSubmitted: (_) => _saveExpense(),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Category is required.';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 18),
+                        PrimaryButton(
+                          label: _isEditMode ? 'Update Expense' : 'Add Expense',
+                          isLoading: _isSaving,
+                          onPressed: _saveExpense,
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 12),
-                    CustomTextField(
-                      label: 'Amount',
-                      hintText: '0.00',
-                      prefixIcon: Icons.attach_money_rounded,
-                      controller: _amountController,
-                      enabled: !_isSaving,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      textInputAction: TextInputAction.next,
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Amount is required.';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    CustomTextField(
-                      label: 'Paid By',
-                      hintText: 'Who paid?',
-                      prefixIcon: Icons.person_outline_rounded,
-                      controller: _paidByController,
-                      enabled: !_isSaving,
-                      textInputAction: TextInputAction.next,
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Paid by is required.';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    CustomTextField(
-                      label: 'Split Count',
-                      hintText: '2',
-                      prefixIcon: Icons.group_outlined,
-                      controller: _splitCountController,
-                      enabled: !_isSaving,
-                      keyboardType: TextInputType.number,
-                      textInputAction: TextInputAction.next,
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Split count is required.';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    CustomTextField(
-                      label: 'Category',
-                      hintText: 'General',
-                      prefixIcon: Icons.category_outlined,
-                      controller: _categoryController,
-                      enabled: !_isSaving,
-                      textInputAction: TextInputAction.done,
-                      onFieldSubmitted: (_) => _saveExpense(),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Category is required.';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    PrimaryButton(
-                      label: _isEditMode ? 'Update Expense' : 'Add Expense',
-                      isLoading: _isSaving,
-                      onPressed: _saveExpense,
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
