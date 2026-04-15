@@ -1,5 +1,5 @@
 import '../models/expense_model.dart';
-import '../constants/expense_reference_data.dart';
+import '../constants/app_constants.dart';
 
 enum ReportScope {
   allTime('All Time'),
@@ -84,10 +84,10 @@ class ExpenseReportService {
     final categoryMap = <String, double>{};
 
     for (final expense in filtered) {
-      final payer = _safeLabel(expense.paidBy, ExpenseReferenceData.unknownPayer);
+      final payer = _safeLabel(expense.paidBy, AppConstants.unknownPayer);
       final category = _safeLabel(
         expense.category,
-        ExpenseReferenceData.defaultCategory,
+        AppConstants.defaultCategory,
       );
       payerMap[payer] = (payerMap[payer] ?? 0) + expense.amount;
       categoryMap[category] = (categoryMap[category] ?? 0) + expense.amount;

@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import '../constants/expense_reference_data.dart';
+import '../constants/app_constants.dart';
 
 class ExpenseModel {
   const ExpenseModel({
@@ -63,12 +63,12 @@ class ExpenseModel {
       amount: amount.isNegative ? 0 : amount,
       paidBy: _readString(
         map['paidBy'],
-        fallback: ExpenseReferenceData.unknownPayer,
+        fallback: AppConstants.unknownPayer,
       ),
       splitCount: splitCount <= 0 ? 1 : splitCount,
       category: _readString(
         map['category'],
-        fallback: ExpenseReferenceData.defaultCategory,
+        fallback: AppConstants.defaultCategory,
       ),
       createdAt: createdAt,
     );

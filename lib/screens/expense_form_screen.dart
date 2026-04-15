@@ -2,7 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../constants/expense_reference_data.dart';
+import '../constants/app_constants.dart';
 import '../models/expense_model.dart';
 import '../services/firestore_service.dart';
 import '../theme/app_theme.dart';
@@ -32,7 +32,7 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
   final _paidByController = TextEditingController();
   final _splitCountController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-  String _selectedCategory = ExpenseReferenceData.defaultCategory;
+  String _selectedCategory = AppConstants.defaultCategory;
   bool _isSaving = false;
 
   bool get _isEditMode => widget.existingExpense != null;
@@ -47,14 +47,14 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
       _paidByController.text = expense.paidBy;
       _splitCountController.text = expense.splitCount.toString();
       final savedCategory = expense.category.trim();
-      _selectedCategory = ExpenseReferenceData.categories.contains(savedCategory)
+      _selectedCategory = AppConstants.expenseCategories.contains(savedCategory)
           ? savedCategory
-          : ExpenseReferenceData.defaultCategory;
+          : AppConstants.defaultCategory;
       return;
     }
 
     _splitCountController.text = '2';
-    _selectedCategory = ExpenseReferenceData.defaultCategory;
+    _selectedCategory = AppConstants.defaultCategory;
   }
 
   @override
@@ -279,7 +279,7 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
                             prefixIcon: Icon(Icons.category_outlined),
                           ),
                           dropdownColor: AppTheme.cardBackground,
-                          items: ExpenseReferenceData.categories
+                          items: AppConstants.expenseCategories
                               .map(
                                 (category) => DropdownMenuItem<String>(
                                   value: category,

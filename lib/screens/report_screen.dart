@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../models/expense_model.dart';
 import '../services/expense_report_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/formatters.dart';
 import '../widgets/app_empty_state.dart';
 import '../widgets/app_feedback.dart';
 import '../widgets/dark_card.dart';
@@ -22,10 +22,6 @@ class ReportScreen extends StatefulWidget {
 }
 
 class _ReportScreenState extends State<ReportScreen> {
-  final NumberFormat _currencyFormatter = NumberFormat.currency(
-    symbol: '\u20B1',
-    decimalDigits: 2,
-  );
   ReportScope _scope = ReportScope.allTime;
 
   ExpenseReportData get _report =>
@@ -34,7 +30,7 @@ class _ReportScreenState extends State<ReportScreen> {
   Future<void> _shareReport() async {
     final text = ExpenseReportService.buildShareText(
       _report,
-      formatCurrency: _currencyFormatter.format,
+      formatCurrency: Formatters.currency,
     );
 
     try {
@@ -143,7 +139,7 @@ class _ReportScreenState extends State<ReportScreen> {
                     Expanded(
                       child: _ReportMetricCard(
                         title: 'Total Expenses',
-                        value: _currencyFormatter.format(report.totalExpenses),
+                        value: Formatters.currency(report.totalExpenses),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -161,14 +157,14 @@ class _ReportScreenState extends State<ReportScreen> {
                     Expanded(
                       child: _ReportMetricCard(
                         title: 'This Month',
-                        value: _currencyFormatter.format(report.thisMonthTotal),
+                        value: Formatters.currency(report.thisMonthTotal),
                       ),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: _ReportMetricCard(
                         title: 'Average',
-                        value: _currencyFormatter.format(report.averageExpense),
+                        value: Formatters.currency(report.averageExpense),
                       ),
                     ),
                   ],
@@ -177,14 +173,14 @@ class _ReportScreenState extends State<ReportScreen> {
                 _BreakdownCard(
                   title: 'Category Breakdown',
                   entries: report.categoryTotals,
-                  currencyFormatter: _currencyFormatter,
+                  formatCurrency: Formatters.currency,
                   emptyLabel: 'No category data available.',
                 ),
                 const SizedBox(height: 12),
                 _BreakdownCard(
                   title: 'Paid By',
                   entries: report.payerTotals,
-                  currencyFormatter: _currencyFormatter,
+                  formatCurrency: Formatters.currency,
                   emptyLabel: 'No payer data available.',
                 ),
               ],
@@ -233,13 +229,13 @@ class _BreakdownCard extends StatelessWidget {
   const _BreakdownCard({
     required this.title,
     required this.entries,
-    required this.currencyFormatter,
+    required this.formatCurrency,
     required this.emptyLabel,
   });
 
   final String title;
   final List<MapEntry<String, double>> entries;
-  final NumberFormat currencyFormatter;
+  final String Function(num value) formatCurrency;
   final String emptyLabel;
 
   @override
@@ -271,7 +267,7 @@ class _BreakdownCard extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    currencyFormatter.format(entry.value),
+                    formatCurrency(entry.value),
                     style: textTheme.bodyMedium?.copyWith(
                       color: AppTheme.textSecondary,
                     ),

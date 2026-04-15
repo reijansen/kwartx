@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import '../constants/expense_reference_data.dart';
+import '../constants/app_constants.dart';
 import '../models/expense_model.dart';
 import '../services/auth_service.dart';
 import '../services/expense_report_service.dart';
 import '../services/firestore_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/formatters.dart';
 import '../widgets/app_empty_state.dart';
 import '../widgets/app_feedback.dart';
 import '../widgets/app_loading_indicator.dart';
@@ -26,10 +27,6 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final FirestoreService _firestoreService = FirestoreService();
   final DateFormat _dateFormatter = DateFormat('MMM d, y');
-  final NumberFormat _currencyFormatter = NumberFormat.currency(
-    symbol: '\u20B1',
-    decimalDigits: 2,
-  );
   final TextEditingController _searchController = TextEditingController();
 
   bool _isSigningOut = false;
@@ -107,10 +104,10 @@ class _HomeScreenState extends State<HomeScreen> {
         .map(
           (expense) => _safeLabel(
             expense.category,
-            ExpenseReferenceData.defaultCategory,
+            AppConstants.defaultCategory,
           ),
         )
-        .followedBy(ExpenseReferenceData.categories)
+        .followedBy(AppConstants.expenseCategories)
         .toSet()
         .toList()
       ..sort();
@@ -125,9 +122,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final filtered = source.where((expense) {
       final category = _safeLabel(
         expense.category,
-        ExpenseReferenceData.defaultCategory,
+        AppConstants.defaultCategory,
       );
-      final paidBy = _safeLabel(expense.paidBy, ExpenseReferenceData.unknownPayer);
+      final paidBy = _safeLabel(expense.paidBy, AppConstants.unknownPayer);
       final title = expense.title.trim();
 
       if (categoryFilter != _allCategoriesKey && category != categoryFilter) {
@@ -388,7 +385,7 @@ class _HomeScreenState extends State<HomeScreen> {
       allExpenses: allExpenses,
       visibleExpenses: expenses,
       dateFormatter: _dateFormatter,
-      currencyFormatter: _currencyFormatter,
+      formatCurrency: Formatters.currency,
       onRefresh: _onRefresh,
       onCategoryChanged: (value) => setState(() => _selectedCategory = value),
       onSortChanged: (value) => setState(() => _sortOption = value),
@@ -474,7 +471,7 @@ class _DashboardBody extends StatelessWidget {
     required this.allExpenses,
     required this.visibleExpenses,
     required this.dateFormatter,
-    required this.currencyFormatter,
+    required this.formatCurrency,
     required this.onRefresh,
     required this.onCategoryChanged,
     required this.onSortChanged,
@@ -505,7 +502,7 @@ class _DashboardBody extends StatelessWidget {
   final List<ExpenseModel> allExpenses;
   final List<ExpenseModel> visibleExpenses;
   final DateFormat dateFormatter;
-  final NumberFormat currencyFormatter;
+  final String Function(num value) formatCurrency;
   final Future<void> Function() onRefresh;
   final ValueChanged<String> onCategoryChanged;
   final ValueChanged<_ExpenseSortOption> onSortChanged;
@@ -722,14 +719,14 @@ class _DashboardBody extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  currencyFormatter.format(summary.totalAmount),
+                  formatCurrency(summary.totalAmount),
                   style: textTheme.headlineMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '${summary.totalCount} expense entries - Avg ${currencyFormatter.format(summary.averageAmount)}',
+                  '${summary.totalCount} expense entries - Avg ${formatCurrency(summary.averageAmount)}',
                   style: textTheme.bodySmall?.copyWith(
                     color: AppTheme.mutedText,
                   ),
@@ -743,7 +740,7 @@ class _DashboardBody extends StatelessWidget {
               Expanded(
                 child: _SummaryTile(
                   title: 'This month',
-                  value: currencyFormatter.format(summary.monthAmount),
+                  value: formatCurrency(summary.monthAmount),
                   subtitle: '${summary.monthCount} entries',
                 ),
               ),
@@ -752,7 +749,7 @@ class _DashboardBody extends StatelessWidget {
                 child: _SummaryTile(
                   title: 'Top payer',
                   value: topPayer?.key ?? 'No data',
-                  subtitle: topPayer == null ? '-' : currencyFormatter.format(topPayer!.value),
+                  subtitle: topPayer == null ? '-' : formatCurrency(topPayer!.value),
                 ),
               ),
             ],
@@ -774,12 +771,12 @@ class _DashboardBody extends StatelessWidget {
             title: 'Paid by',
             entries: summary.payerTotals,
             emptyLabel: 'No payer data yet.',
-            currencyFormatter: currencyFormatter,
+            formatCurrency: formatCurrency,
           ),
           const SizedBox(height: 18),
           _CategorySection(
             entries: summary.categoryTotals,
-            currencyFormatter: currencyFormatter,
+            formatCurrency: formatCurrency,
           ),
           const SizedBox(height: 18),
           Text('Recent expenses', style: textTheme.titleMedium),
@@ -796,7 +793,7 @@ class _DashboardBody extends StatelessWidget {
               onDeleteExpense: onDeleteExpense,
               onConfirmDelete: onConfirmDelete,
               dateFormatter: dateFormatter,
-              currencyFormatter: currencyFormatter,
+              formatCurrency: formatCurrency,
               amountPerPerson: amountPerPerson,
               safeLabel: safeLabel,
             ),
@@ -854,13 +851,13 @@ class _GroupedSection extends StatelessWidget {
     required this.title,
     required this.entries,
     required this.emptyLabel,
-    required this.currencyFormatter,
+    required this.formatCurrency,
   });
 
   final String title;
   final List<MapEntry<String, double>> entries;
   final String emptyLabel;
-  final NumberFormat currencyFormatter;
+  final String Function(num value) formatCurrency;
 
   @override
   Widget build(BuildContext context) {
@@ -895,7 +892,7 @@ class _GroupedSection extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            currencyFormatter.format(entry.value),
+                            formatCurrency(entry.value),
                             style: textTheme.bodyMedium?.copyWith(
                               color: AppTheme.textSecondary,
                             ),
@@ -914,11 +911,11 @@ class _GroupedSection extends StatelessWidget {
 class _CategorySection extends StatelessWidget {
   const _CategorySection({
     required this.entries,
-    required this.currencyFormatter,
+    required this.formatCurrency,
   });
 
   final List<MapEntry<String, double>> entries;
-  final NumberFormat currencyFormatter;
+  final String Function(num value) formatCurrency;
 
   @override
   Widget build(BuildContext context) {
@@ -955,7 +952,7 @@ class _CategorySection extends StatelessWidget {
                         ),
                       ),
                       child: Text(
-                        '${entry.key}: ${currencyFormatter.format(entry.value)}',
+                        '${entry.key}: ${formatCurrency(entry.value)}',
                         style: textTheme.bodySmall?.copyWith(
                           color: AppTheme.textSecondary,
                         ),
@@ -980,7 +977,7 @@ class _ExpensesListBody extends StatelessWidget {
     required this.onDeleteExpense,
     required this.onConfirmDelete,
     required this.dateFormatter,
-    required this.currencyFormatter,
+    required this.formatCurrency,
     required this.amountPerPerson,
     required this.safeLabel,
   });
@@ -993,7 +990,7 @@ class _ExpensesListBody extends StatelessWidget {
   final Future<void> Function(ExpenseModel expense) onDeleteExpense;
   final Future<bool> Function(ExpenseModel expense) onConfirmDelete;
   final DateFormat dateFormatter;
-  final NumberFormat currencyFormatter;
+  final String Function(num value) formatCurrency;
   final double Function(ExpenseModel expense) amountPerPerson;
   final String Function(String? raw, String fallback) safeLabel;
 
@@ -1054,7 +1051,7 @@ class _ExpensesListBody extends StatelessWidget {
                           Text(expense.title, style: textTheme.titleMedium),
                           const SizedBox(height: 4),
                           Text(
-                            '${safeLabel(expense.paidBy, ExpenseReferenceData.unknownPayer)} - ${safeLabel(expense.category, ExpenseReferenceData.defaultCategory)}',
+                            '${safeLabel(expense.paidBy, AppConstants.unknownPayer)} - ${safeLabel(expense.category, AppConstants.defaultCategory)}',
                             style: textTheme.bodySmall?.copyWith(
                               color: AppTheme.mutedText,
                             ),
@@ -1068,7 +1065,7 @@ class _ExpensesListBody extends StatelessWidget {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            '${currencyFormatter.format(amountPerPerson(expense))} per person',
+                            '${formatCurrency(amountPerPerson(expense))} per person',
                             style: textTheme.bodySmall?.copyWith(
                               color: AppTheme.secondaryAccentBlue,
                             ),
@@ -1078,7 +1075,7 @@ class _ExpensesListBody extends StatelessWidget {
                     ),
                     const SizedBox(width: 12),
                     Text(
-                      currencyFormatter.format(expense.amount),
+                      formatCurrency(expense.amount),
                       style: textTheme.titleMedium?.copyWith(
                         color: AppTheme.textPrimary,
                       ),
