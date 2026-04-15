@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
+import '../models/expense_model.dart';
 import '../services/auth_service.dart';
+import '../services/firestore_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/dark_card.dart';
 import 'expense_form_screen.dart';
@@ -15,6 +18,8 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final FirestoreService _firestoreService = FirestoreService();
+  final DateFormat _dateFormatter = DateFormat('MMM d, y');
   bool _isSigningOut = false;
 
   Future<void> _handleSignOut() async {
@@ -40,21 +45,87 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _openExpenseForm(String title) async {
+  Future<void> _openExpenseForm({
+    required String title,
+    ExpenseModel? expense,
+  }) async {
     await Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => ExpenseFormScreen(title: title)),
+      MaterialPageRoute<void>(
+        builder: (_) =>
+            ExpenseFormScreen(title: title, existingExpense: expense),
+      ),
     );
+  }
+
+  Future<bool> _confirmDelete(ExpenseModel expense) async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: AppTheme.cardBackground,
+          title: const Text('Delete Expense'),
+          content: Text('Delete "${expense.title}" permanently?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text(
+                'Delete',
+                style: TextStyle(color: AppTheme.dangerRed),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    return shouldDelete ?? false;
+  }
+
+  Future<void> _deleteExpense(ExpenseModel expense) async {
+    final shouldDelete = await _confirmDelete(expense);
+    if (!shouldDelete) {
+      return;
+    }
+
+    try {
+      await _firestoreService.deleteExpense(expense.id);
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Expense deleted.')));
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to delete expense.')),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final email = widget.authService.currentUser?.email ?? 'user@kwartx.app';
-    final expenseItems = const [
-      ('Team dinner', '3 people - Yesterday', '- \$84.20'),
-      ('Groceries', 'Apartment - 2 days ago', '- \$56.75'),
-      ('Ride share', 'Shared ride - Monday', '- \$14.90'),
-    ];
+    final user = widget.authService.currentUser;
+    final uid = user?.uid;
+    final email = user?.email ?? 'user@kwartx.app';
+
+    if (uid == null || uid.isEmpty) {
+      return Scaffold(
+        body: Container(
+          decoration: const BoxDecoration(gradient: AppTheme.screenGradient),
+          child: const Center(
+            child: Text('Session unavailable. Please sign in again.'),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -79,143 +150,245 @@ class _HomeScreenState extends State<HomeScreen> {
       body: Container(
         decoration: const BoxDecoration(gradient: AppTheme.screenGradient),
         child: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              Row(
+          child: StreamBuilder<List<ExpenseModel>>(
+            stream: _firestoreService.getExpensesStream(uid),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(
+                  child: CircularProgressIndicator(
+                    color: AppTheme.secondaryAccentBlue,
+                  ),
+                );
+              }
+
+              if (snapshot.hasError) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(
+                      'Unable to load expenses right now.',
+                      style: textTheme.bodyLarge,
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                );
+              }
+
+              final expenses = snapshot.data ?? [];
+              final monthTotal = expenses
+                  .where(
+                    (expense) =>
+                        expense.createdAt.year == DateTime.now().year &&
+                        expense.createdAt.month == DateTime.now().month,
+                  )
+                  .fold<double>(0, (sum, expense) => sum + expense.amount);
+
+              return ListView(
+                padding: const EdgeInsets.all(16),
                 children: [
-                  Expanded(
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Welcome back',
+                              style: textTheme.bodyMedium?.copyWith(
+                                color: AppTheme.mutedText,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              email,
+                              style: textTheme.titleMedium,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        width: 46,
+                        height: 46,
+                        decoration: BoxDecoration(
+                          color: AppTheme.navOverlay,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: AppTheme.glowOutlineBlue.withAlpha(170),
+                            width: 1.2,
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.person_rounded,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  DarkCard(
+                    radius: 20,
+                    padding: const EdgeInsets.all(20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Welcome back',
+                          'Shared expenses',
+                          style: textTheme.bodyMedium?.copyWith(
+                            color: AppTheme.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text('This month', style: textTheme.titleMedium),
+                        const SizedBox(height: 12),
+                        Text(
+                          '\$${monthTotal.toStringAsFixed(2)}',
+                          style: textTheme.headlineMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text('Quick actions', style: textTheme.titleMedium),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _QuickAction(
+                        icon: Icons.add_circle_outline_rounded,
+                        label: 'Add',
+                        onTap: () => _openExpenseForm(title: 'Add Expense'),
+                      ),
+                      _QuickAction(
+                        icon: Icons.call_split_rounded,
+                        label: 'Split',
+                        onTap: () => _openExpenseForm(title: 'Split Bill'),
+                      ),
+                      _QuickAction(
+                        icon: Icons.bar_chart_rounded,
+                        label: 'Summary',
+                        onTap: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Summary view is coming soon.'),
+                            ),
+                          );
+                        },
+                      ),
+                      _QuickAction(
+                        icon: Icons.more_horiz_rounded,
+                        label: 'More',
+                        onTap: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('More actions are coming soon.'),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Text('Recent expenses', style: textTheme.titleMedium),
+                  const SizedBox(height: 12),
+                  if (expenses.isEmpty)
+                    DarkCard(
+                      radius: 16,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 20),
+                        child: Text(
+                          'No expenses yet. Add your first expense.',
                           style: textTheme.bodyMedium?.copyWith(
                             color: AppTheme.mutedText,
                           ),
+                          textAlign: TextAlign.center,
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          email,
-                          style: textTheme.titleMedium,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    width: 46,
-                    height: 46,
-                    decoration: BoxDecoration(
-                      color: AppTheme.navOverlay,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: AppTheme.glowOutlineBlue.withAlpha(170),
-                        width: 1.2,
                       ),
                     ),
-                    child: const Icon(
-                      Icons.person_rounded,
-                      color: AppTheme.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 18),
-              DarkCard(
-                radius: 20,
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Shared expenses',
-                      style: textTheme.bodyMedium?.copyWith(
-                        color: AppTheme.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text('This month', style: textTheme.titleMedium),
-                    const SizedBox(height: 12),
-                    Text(
-                      '\$1,284.60',
-                      style: textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text('Quick actions', style: textTheme.titleMedium),
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _QuickAction(
-                    icon: Icons.add_circle_outline_rounded,
-                    label: 'Add',
-                    onTap: () => _openExpenseForm('Add Expense'),
-                  ),
-                  _QuickAction(
-                    icon: Icons.call_split_rounded,
-                    label: 'Split',
-                    onTap: () => _openExpenseForm('Split Bill'),
-                  ),
-                  _QuickAction(
-                    icon: Icons.bar_chart_rounded,
-                    label: 'Summary',
-                    onTap: () => _openExpenseForm('Summary'),
-                  ),
-                  _QuickAction(
-                    icon: Icons.more_horiz_rounded,
-                    label: 'More',
-                    onTap: () => _openExpenseForm('More Actions'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              Text('Recent expenses', style: textTheme.titleMedium),
-              const SizedBox(height: 12),
-              ...expenseItems.map((item) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: DarkCard(
-                    radius: 16,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 12,
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(item.$1, style: textTheme.titleMedium),
-                              const SizedBox(height: 4),
-                              Text(
-                                item.$2,
-                                style: textTheme.bodySmall?.copyWith(
-                                  color: AppTheme.mutedText,
-                                ),
-                              ),
-                            ],
+                  ...expenses.map((expense) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Dismissible(
+                        key: ValueKey(expense.id),
+                        direction: DismissDirection.endToStart,
+                        confirmDismiss: (_) => _confirmDelete(expense),
+                        onDismissed: (_) => _deleteExpense(expense),
+                        background: Container(
+                          decoration: BoxDecoration(
+                            color: AppTheme.dangerRed.withAlpha(180),
+                            borderRadius: BorderRadius.circular(16),
                           ),
-                        ),
-                        Text(
-                          item.$3,
-                          style: textTheme.titleMedium?.copyWith(
+                          alignment: Alignment.centerRight,
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: const Icon(
+                            Icons.delete_outline_rounded,
                             color: AppTheme.textPrimary,
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                );
-              }),
-            ],
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: () {
+                            _openExpenseForm(
+                              title: 'Edit Expense',
+                              expense: expense,
+                            );
+                          },
+                          child: DarkCard(
+                            radius: 16,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 12,
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        expense.title,
+                                        style: textTheme.titleMedium,
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        '${expense.paidBy} - ${expense.category}',
+                                        style: textTheme.bodySmall?.copyWith(
+                                          color: AppTheme.mutedText,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        _dateFormatter.format(
+                                          expense.createdAt,
+                                        ),
+                                        style: textTheme.bodySmall?.copyWith(
+                                          color: AppTheme.mutedText,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  '\$${expense.amount.toStringAsFixed(2)}',
+                                  style: textTheme.titleMedium?.copyWith(
+                                    color: AppTheme.textPrimary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+              );
+            },
           ),
         ),
       ),

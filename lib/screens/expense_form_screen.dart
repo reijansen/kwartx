@@ -1,54 +1,134 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
+import '../models/expense_model.dart';
+import '../services/firestore_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/dark_card.dart';
 import '../widgets/primary_button.dart';
 
 class ExpenseFormScreen extends StatefulWidget {
-  const ExpenseFormScreen({super.key, required this.title});
+  const ExpenseFormScreen({
+    super.key,
+    required this.title,
+    this.existingExpense,
+  });
 
   final String title;
+  final ExpenseModel? existingExpense;
 
   @override
   State<ExpenseFormScreen> createState() => _ExpenseFormScreenState();
 }
 
 class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
+  final FirestoreService _firestoreService = FirestoreService();
   final _titleController = TextEditingController();
   final _amountController = TextEditingController();
-  final _notesController = TextEditingController();
+  final _paidByController = TextEditingController();
+  final _splitCountController = TextEditingController();
+  final _categoryController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isSaving = false;
+
+  bool get _isEditMode => widget.existingExpense != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final expense = widget.existingExpense;
+    if (expense != null) {
+      _titleController.text = expense.title;
+      _amountController.text = expense.amount.toStringAsFixed(2);
+      _paidByController.text = expense.paidBy;
+      _splitCountController.text = expense.splitCount.toString();
+      _categoryController.text = expense.category;
+      return;
+    }
+
+    _splitCountController.text = '2';
+    _categoryController.text = 'General';
+  }
 
   @override
   void dispose() {
     _titleController.dispose();
     _amountController.dispose();
-    _notesController.dispose();
+    _paidByController.dispose();
+    _splitCountController.dispose();
+    _categoryController.dispose();
     super.dispose();
   }
 
-  Future<void> _savePlaceholder() async {
+  Future<void> _saveExpense() async {
     final form = _formKey.currentState;
     if (form == null || !form.validate()) {
       return;
     }
+
+    final amount = double.tryParse(_amountController.text.trim());
+    final splitCount = int.tryParse(_splitCountController.text.trim());
+    if (amount == null || amount <= 0) {
+      _showMessage('Please enter a valid amount.');
+      return;
+    }
+    if (splitCount == null || splitCount <= 0) {
+      _showMessage('Split count must be at least 1.');
+      return;
+    }
+
     setState(() {
       _isSaving = true;
     });
 
-    await Future<void>.delayed(const Duration(milliseconds: 450));
+    try {
+      if (_isEditMode) {
+        await _firestoreService.updateExpense(widget.existingExpense!.id, {
+          'title': _titleController.text.trim(),
+          'amount': amount,
+          'paidBy': _paidByController.text.trim(),
+          'splitCount': splitCount,
+          'category': _categoryController.text.trim(),
+        });
+      } else {
+        final expense = ExpenseModel(
+          id: '',
+          title: _titleController.text.trim(),
+          amount: amount,
+          paidBy: _paidByController.text.trim(),
+          splitCount: splitCount,
+          category: _categoryController.text.trim(),
+          createdAt: DateTime.now(),
+        );
+        await _firestoreService.addExpense(expense);
+      }
+
+      if (!mounted) {
+        return;
+      }
+      _showMessage(_isEditMode ? 'Expense updated.' : 'Expense added.');
+      Navigator.of(context).pop();
+    } on FirebaseException {
+      _showMessage('Unable to save expense right now.');
+    } catch (_) {
+      _showMessage('Something went wrong while saving expense.');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
+  }
+
+  void _showMessage(String message) {
     if (!mounted) {
       return;
     }
-    setState(() {
-      _isSaving = false;
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Saved locally as a UI placeholder.')),
-    );
-    Navigator.of(context).pop();
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -106,18 +186,56 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
                     ),
                     const SizedBox(height: 12),
                     CustomTextField(
-                      label: 'Notes',
-                      hintText: 'Optional note',
-                      prefixIcon: Icons.notes_rounded,
-                      controller: _notesController,
+                      label: 'Paid By',
+                      hintText: 'Who paid?',
+                      prefixIcon: Icons.person_outline_rounded,
+                      controller: _paidByController,
                       enabled: !_isSaving,
-                      maxLines: 3,
+                      textInputAction: TextInputAction.next,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Paid by is required.';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    CustomTextField(
+                      label: 'Split Count',
+                      hintText: '2',
+                      prefixIcon: Icons.group_outlined,
+                      controller: _splitCountController,
+                      enabled: !_isSaving,
+                      keyboardType: TextInputType.number,
+                      textInputAction: TextInputAction.next,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Split count is required.';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    CustomTextField(
+                      label: 'Category',
+                      hintText: 'General',
+                      prefixIcon: Icons.category_outlined,
+                      controller: _categoryController,
+                      enabled: !_isSaving,
+                      textInputAction: TextInputAction.done,
+                      onFieldSubmitted: (_) => _saveExpense(),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Category is required.';
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 16),
                     PrimaryButton(
-                      label: 'Save',
+                      label: _isEditMode ? 'Update Expense' : 'Add Expense',
                       isLoading: _isSaving,
-                      onPressed: _savePlaceholder,
+                      onPressed: _saveExpense,
                     ),
                   ],
                 ),
