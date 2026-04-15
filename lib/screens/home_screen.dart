@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 import '../models/expense_model.dart';
 import '../services/auth_service.dart';
+import '../services/expense_report_service.dart';
 import '../services/firestore_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_empty_state.dart';
@@ -10,6 +11,7 @@ import '../widgets/app_feedback.dart';
 import '../widgets/app_loading_indicator.dart';
 import '../widgets/dark_card.dart';
 import 'expense_form_screen.dart';
+import 'report_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, required this.authService});
@@ -250,6 +252,26 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Future<void> _openReport(List<ExpenseModel> expenses) async {
+    await Navigator.of(context).push(
+      PageRouteBuilder<void>(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            ReportScreen(expenses: expenses),
+        transitionsBuilder:
+            (context, animation, secondaryAnimation, child) {
+          return FadeTransition(
+            opacity: CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOutCubic,
+            ),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 220),
+      ),
+    );
+  }
+
   Future<void> _deleteExpense(ExpenseModel expense) async {
     try {
       await _firestoreService.deleteExpense(expense.id);
@@ -274,49 +296,22 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   _DashboardSummary _buildSummary(List<ExpenseModel> expenses) {
-    final now = DateTime.now();
-    final thisMonthExpenses = expenses
-        .where(
-          (expense) =>
-              expense.createdAt.year == now.year &&
-              expense.createdAt.month == now.month,
-        )
-        .toList();
-
-    final totalAmount = expenses.fold<double>(
-      0,
-      (sum, expense) => sum + expense.amount,
+    final report = ExpenseReportService.buildReport(
+      expenses,
+      scope: ReportScope.allTime,
     );
-    final monthAmount = thisMonthExpenses.fold<double>(
-      0,
-      (sum, expense) => sum + expense.amount,
-    );
-    final averageAmount = expenses.isEmpty
-        ? 0.0
-        : totalAmount / expenses.length;
-
-    final byPayer = <String, double>{};
-    final byCategory = <String, double>{};
-    for (final expense in expenses) {
-      final payer = _safeLabel(expense.paidBy, 'Unknown payer');
-      final category = _safeLabel(expense.category, 'General');
-      byPayer[payer] = (byPayer[payer] ?? 0) + expense.amount;
-      byCategory[category] = (byCategory[category] ?? 0) + expense.amount;
-    }
-
-    final payerTotals = byPayer.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-    final categoryTotals = byCategory.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
 
     return _DashboardSummary(
-      totalAmount: totalAmount,
-      totalCount: expenses.length,
-      averageAmount: averageAmount,
-      monthAmount: monthAmount,
-      monthCount: thisMonthExpenses.length,
-      payerTotals: payerTotals,
-      categoryTotals: categoryTotals,
+      totalAmount: report.totalExpenses,
+      totalCount: report.totalEntries,
+      averageAmount: report.averageExpense,
+      monthAmount: report.thisMonthTotal,
+      monthCount: ExpenseReportService.filterByScope(
+        expenses,
+        scope: ReportScope.thisMonth,
+      ).length,
+      payerTotals: report.payerTotals,
+      categoryTotals: report.categoryTotals,
     );
   }
 
@@ -391,10 +386,7 @@ class _HomeScreenState extends State<HomeScreen> {
       onResetFilters: _resetFilters,
       onAddExpense: () => _openExpenseForm(title: 'Add Expense'),
       onSplitBill: () => _openExpenseForm(title: 'Split Bill'),
-      onSummaryTap: () => showAppSnackBar(
-        context,
-        message: 'Summary view is coming soon.',
-      ),
+      onSummaryTap: () => _openReport(allExpenses),
       onMoreTap: () => showAppSnackBar(
         context,
         message: 'More actions are coming soon.',
