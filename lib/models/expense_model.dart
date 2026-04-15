@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../constants/expense_reference_data.dart';
+
 class ExpenseModel {
   const ExpenseModel({
     required this.id,
@@ -51,22 +53,47 @@ class ExpenseModel {
   }
 
   factory ExpenseModel.fromMap(String id, Map<String, dynamic> map) {
-    final createdAtValue = map['createdAt'];
-    DateTime createdAt = DateTime.now();
-    if (createdAtValue is Timestamp) {
-      createdAt = createdAtValue.toDate();
-    } else if (createdAtValue is DateTime) {
-      createdAt = createdAtValue;
-    }
+    final createdAt = _readDateTime(map['createdAt']) ?? DateTime.now();
+    final splitCount = (map['splitCount'] as num?)?.toInt() ?? 1;
+    final amount = (map['amount'] as num?)?.toDouble() ?? 0.0;
 
     return ExpenseModel(
       id: id,
-      title: (map['title'] ?? '') as String,
-      amount: (map['amount'] as num?)?.toDouble() ?? 0,
-      paidBy: (map['paidBy'] ?? '') as String,
-      splitCount: (map['splitCount'] as num?)?.toInt() ?? 1,
-      category: (map['category'] ?? 'General') as String,
+      title: _readString(map['title'], fallback: 'Untitled expense'),
+      amount: amount.isNegative ? 0 : amount,
+      paidBy: _readString(
+        map['paidBy'],
+        fallback: ExpenseReferenceData.unknownPayer,
+      ),
+      splitCount: splitCount <= 0 ? 1 : splitCount,
+      category: _readString(
+        map['category'],
+        fallback: ExpenseReferenceData.defaultCategory,
+      ),
       createdAt: createdAt,
     );
+  }
+
+  static String _readString(dynamic value, {required String fallback}) {
+    if (value is String) {
+      final normalized = value.trim();
+      if (normalized.isNotEmpty) {
+        return normalized;
+      }
+    }
+    return fallback;
+  }
+
+  static DateTime? _readDateTime(dynamic value) {
+    if (value is Timestamp) {
+      return value.toDate();
+    }
+    if (value is DateTime) {
+      return value;
+    }
+    if (value is int) {
+      return DateTime.fromMillisecondsSinceEpoch(value);
+    }
+    return null;
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../constants/expense_reference_data.dart';
 import '../models/expense_model.dart';
 import '../services/auth_service.dart';
 import '../services/expense_report_service.dart';
@@ -103,7 +104,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
   List<String> _deriveCategories(List<ExpenseModel> expenses) {
     final categories = expenses
-        .map((expense) => _safeLabel(expense.category, 'General'))
+        .map(
+          (expense) => _safeLabel(
+            expense.category,
+            ExpenseReferenceData.defaultCategory,
+          ),
+        )
+        .followedBy(ExpenseReferenceData.categories)
         .toSet()
         .toList()
       ..sort();
@@ -116,8 +123,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }) {
     final query = _searchQuery.toLowerCase();
     final filtered = source.where((expense) {
-      final category = _safeLabel(expense.category, 'General');
-      final paidBy = _safeLabel(expense.paidBy, 'Unknown payer');
+      final category = _safeLabel(
+        expense.category,
+        ExpenseReferenceData.defaultCategory,
+      );
+      final paidBy = _safeLabel(expense.paidBy, ExpenseReferenceData.unknownPayer);
       final title = expense.title.trim();
 
       if (categoryFilter != _allCategoriesKey && category != categoryFilter) {
@@ -387,10 +397,7 @@ class _HomeScreenState extends State<HomeScreen> {
       onAddExpense: () => _openExpenseForm(title: 'Add Expense'),
       onSplitBill: () => _openExpenseForm(title: 'Split Bill'),
       onSummaryTap: () => _openReport(allExpenses),
-      onMoreTap: () => showAppSnackBar(
-        context,
-        message: 'More actions are coming soon.',
-      ),
+      onMoreTap: _resetFilters,
       onEditExpense: (expense) => _openExpenseForm(
         title: 'Edit Expense',
         expense: expense,
@@ -758,8 +765,8 @@ class _DashboardBody extends StatelessWidget {
             children: [
               _QuickAction(icon: Icons.add_circle_outline_rounded, label: 'Add', onTap: onAddExpense),
               _QuickAction(icon: Icons.call_split_rounded, label: 'Split', onTap: onSplitBill),
-              _QuickAction(icon: Icons.bar_chart_rounded, label: 'Summary', onTap: onSummaryTap),
-              _QuickAction(icon: Icons.more_horiz_rounded, label: 'More', onTap: onMoreTap),
+              _QuickAction(icon: Icons.bar_chart_rounded, label: 'Report', onTap: onSummaryTap),
+              _QuickAction(icon: Icons.restart_alt_rounded, label: 'Reset', onTap: onMoreTap),
             ],
           ),
           const SizedBox(height: 18),
@@ -1047,7 +1054,7 @@ class _ExpensesListBody extends StatelessWidget {
                           Text(expense.title, style: textTheme.titleMedium),
                           const SizedBox(height: 4),
                           Text(
-                            '${safeLabel(expense.paidBy, 'Unknown payer')} - ${safeLabel(expense.category, 'General')}',
+                            '${safeLabel(expense.paidBy, ExpenseReferenceData.unknownPayer)} - ${safeLabel(expense.category, ExpenseReferenceData.defaultCategory)}',
                             style: textTheme.bodySmall?.copyWith(
                               color: AppTheme.mutedText,
                             ),

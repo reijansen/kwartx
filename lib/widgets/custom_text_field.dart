@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../theme/app_theme.dart';
 
@@ -16,6 +17,7 @@ class CustomTextField extends StatefulWidget {
     this.onFieldSubmitted,
     this.prefixIcon,
     this.maxLines = 1,
+    this.inputFormatters,
   });
 
   final String label;
@@ -29,6 +31,7 @@ class CustomTextField extends StatefulWidget {
   final ValueChanged<String>? onFieldSubmitted;
   final IconData? prefixIcon;
   final int maxLines;
+  final List<TextInputFormatter>? inputFormatters;
 
   @override
   State<CustomTextField> createState() => _CustomTextFieldState();
@@ -53,6 +56,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
       onTapOutside: (_) => FocusScope.of(context).unfocus(),
       keyboardType: widget.keyboardType,
       textInputAction: widget.textInputAction,
+      inputFormatters: widget.inputFormatters,
       obscureText: _isObscured,
       validator: widget.validator,
       onFieldSubmitted: widget.onFieldSubmitted,

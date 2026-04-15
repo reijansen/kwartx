@@ -1,6 +1,8 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
+import '../constants/expense_reference_data.dart';
 import '../models/expense_model.dart';
 import '../services/firestore_service.dart';
 import '../theme/app_theme.dart';
@@ -29,8 +31,8 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
   final _amountController = TextEditingController();
   final _paidByController = TextEditingController();
   final _splitCountController = TextEditingController();
-  final _categoryController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  String _selectedCategory = ExpenseReferenceData.defaultCategory;
   bool _isSaving = false;
 
   bool get _isEditMode => widget.existingExpense != null;
@@ -44,12 +46,15 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
       _amountController.text = expense.amount.toStringAsFixed(2);
       _paidByController.text = expense.paidBy;
       _splitCountController.text = expense.splitCount.toString();
-      _categoryController.text = expense.category;
+      final savedCategory = expense.category.trim();
+      _selectedCategory = ExpenseReferenceData.categories.contains(savedCategory)
+          ? savedCategory
+          : ExpenseReferenceData.defaultCategory;
       return;
     }
 
     _splitCountController.text = '2';
-    _categoryController.text = 'General';
+    _selectedCategory = ExpenseReferenceData.defaultCategory;
   }
 
   @override
@@ -58,11 +63,13 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
     _amountController.dispose();
     _paidByController.dispose();
     _splitCountController.dispose();
-    _categoryController.dispose();
     super.dispose();
   }
 
   Future<void> _saveExpense() async {
+    if (_isSaving) {
+      return;
+    }
     FocusScope.of(context).unfocus();
 
     final form = _formKey.currentState;
@@ -70,7 +77,7 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
       return;
     }
 
-    final amount = double.tryParse(_amountController.text.trim());
+    final amount = _parseAmount(_amountController.text);
     final splitCount = int.tryParse(_splitCountController.text.trim());
     if (amount == null || amount <= 0) {
       _showMessage(
@@ -98,7 +105,7 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
           'amount': amount,
           'paidBy': _paidByController.text.trim(),
           'splitCount': splitCount,
-          'category': _categoryController.text.trim(),
+          'category': _selectedCategory,
         });
       } else {
         final expense = ExpenseModel(
@@ -107,7 +114,7 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
           amount: amount,
           paidBy: _paidByController.text.trim(),
           splitCount: splitCount,
-          category: _categoryController.text.trim(),
+          category: _selectedCategory,
           createdAt: DateTime.now(),
         );
         await _firestoreService.addExpense(expense);
@@ -138,6 +145,11 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
         });
       }
     }
+  }
+
+  double? _parseAmount(String raw) {
+    final normalized = raw.trim().replaceAll(',', '');
+    return double.tryParse(normalized);
   }
 
   void _showMessage(String message, {AppFeedbackType type = AppFeedbackType.info}) {
@@ -212,6 +224,11 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
                           ),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(
+                              RegExp(r'[0-9.,]'),
+                            ),
+                          ],
                           textInputAction: TextInputAction.next,
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
@@ -243,6 +260,9 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
                           controller: _splitCountController,
                           enabled: !_isSaving,
                           keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                          ],
                           textInputAction: TextInputAction.next,
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
@@ -252,20 +272,31 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
                           },
                         ),
                         const SizedBox(height: 14),
-                        CustomTextField(
-                          label: 'Category',
-                          hintText: 'General',
-                          prefixIcon: Icons.category_outlined,
-                          controller: _categoryController,
-                          enabled: !_isSaving,
-                          textInputAction: TextInputAction.done,
-                          onFieldSubmitted: (_) => _saveExpense(),
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Category is required.';
-                            }
-                            return null;
-                          },
+                        DropdownButtonFormField<String>(
+                          initialValue: _selectedCategory,
+                          decoration: const InputDecoration(
+                            labelText: 'Category',
+                            prefixIcon: Icon(Icons.category_outlined),
+                          ),
+                          dropdownColor: AppTheme.cardBackground,
+                          items: ExpenseReferenceData.categories
+                              .map(
+                                (category) => DropdownMenuItem<String>(
+                                  value: category,
+                                  child: Text(category),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: _isSaving
+                              ? null
+                              : (value) {
+                                  if (value == null) {
+                                    return;
+                                  }
+                                  setState(() {
+                                    _selectedCategory = value;
+                                  });
+                                },
                         ),
                         const SizedBox(height: 18),
                         PrimaryButton(
