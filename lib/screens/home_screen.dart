@@ -21,7 +21,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final FirestoreService _firestoreService = FirestoreService();
   final DateFormat _dateFormatter = DateFormat('MMM d, y');
   final NumberFormat _currencyFormatter = NumberFormat.currency(
-    symbol: '\$',
+    symbol: '₱',
     decimalDigits: 2,
   );
   bool _isSigningOut = false;

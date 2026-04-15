@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../services/auth_error_mapper.dart';
@@ -51,7 +52,12 @@ class _SignInScreenState extends State<SignInScreen> {
         password: _passwordController.text.trim(),
       );
     } on FirebaseAuthException catch (error) {
-      _showMessage(mapFirebaseAuthErrorCode(error.code));
+      _showMessage(
+        mapFirebaseAuthException(
+          error,
+          includeDebugDetails: kDebugMode,
+        ),
+      );
     } catch (_) {
       _showMessage('Something went wrong. Please try again.');
     } finally {

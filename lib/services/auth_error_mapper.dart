@@ -1,3 +1,5 @@
+import 'package:firebase_auth/firebase_auth.dart';
+
 String mapFirebaseAuthErrorCode(String code) {
   switch (code) {
     case 'invalid-email':
@@ -19,4 +21,21 @@ String mapFirebaseAuthErrorCode(String code) {
     default:
       return 'Authentication failed. Please try again.';
   }
+}
+
+String mapFirebaseAuthException(
+  FirebaseAuthException error, {
+  bool includeDebugDetails = false,
+}) {
+  final userMessage = mapFirebaseAuthErrorCode(error.code);
+  if (!includeDebugDetails) {
+    return userMessage;
+  }
+
+  final backendMessage = (error.message ?? '').trim();
+  if (backendMessage.isEmpty) {
+    return '$userMessage [code: ${error.code}]';
+  }
+
+  return '$userMessage [code: ${error.code}] $backendMessage';
 }
