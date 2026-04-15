@@ -20,6 +20,10 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final FirestoreService _firestoreService = FirestoreService();
   final DateFormat _dateFormatter = DateFormat('MMM d, y');
+  final NumberFormat _currencyFormatter = NumberFormat.currency(
+    symbol: '\$',
+    decimalDigits: 2,
+  );
   bool _isSigningOut = false;
 
   Future<void> _handleSignOut() async {
@@ -86,11 +90,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _deleteExpense(ExpenseModel expense) async {
-    final shouldDelete = await _confirmDelete(expense);
-    if (!shouldDelete) {
-      return;
-    }
-
     try {
       await _firestoreService.deleteExpense(expense.id);
       if (!mounted) {
@@ -107,6 +106,65 @@ class _HomeScreenState extends State<HomeScreen> {
         const SnackBar(content: Text('Failed to delete expense.')),
       );
     }
+  }
+
+  String _safeLabel(String? raw, String fallback) {
+    final value = raw?.trim() ?? '';
+    return value.isEmpty ? fallback : value;
+  }
+
+  int _safeSplitCount(int value) => value <= 0 ? 1 : value;
+
+  double _amountPerPerson(ExpenseModel expense) {
+    return expense.amount / _safeSplitCount(expense.splitCount);
+  }
+
+  _DashboardSummary _buildSummary(List<ExpenseModel> expenses) {
+    final now = DateTime.now();
+    final thisMonthExpenses = expenses
+        .where(
+          (expense) =>
+              expense.createdAt.year == now.year &&
+              expense.createdAt.month == now.month,
+        )
+        .toList();
+
+    final totalAmount = expenses.fold<double>(
+      0,
+      (sum, expense) => sum + expense.amount,
+    );
+    final monthAmount = thisMonthExpenses.fold<double>(
+      0,
+      (sum, expense) => sum + expense.amount,
+    );
+    final averageAmount = expenses.isEmpty
+        ? 0.0
+        : totalAmount / expenses.length;
+
+    final byPayer = <String, double>{};
+    final byCategory = <String, double>{};
+
+    for (final expense in expenses) {
+      final payer = _safeLabel(expense.paidBy, 'Unknown payer');
+      final category = _safeLabel(expense.category, 'General');
+      byPayer[payer] = (byPayer[payer] ?? 0) + expense.amount;
+      byCategory[category] = (byCategory[category] ?? 0) + expense.amount;
+    }
+
+    final payerTotals = byPayer.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final categoryTotals = byCategory.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    return _DashboardSummary(
+      totalAmount: totalAmount,
+      totalCount: expenses.length,
+      averageAmount: averageAmount,
+      monthAmount: monthAmount,
+      monthCount: thisMonthExpenses.length,
+      payerTotals: payerTotals,
+      categoryTotals: categoryTotals,
+    );
   }
 
   @override
@@ -175,13 +233,10 @@ class _HomeScreenState extends State<HomeScreen> {
               }
 
               final expenses = snapshot.data ?? [];
-              final monthTotal = expenses
-                  .where(
-                    (expense) =>
-                        expense.createdAt.year == DateTime.now().year &&
-                        expense.createdAt.month == DateTime.now().month,
-                  )
-                  .fold<double>(0, (sum, expense) => sum + expense.amount);
+              final summary = _buildSummary(expenses);
+              final topPayer = summary.payerTotals.isEmpty
+                  ? null
+                  : summary.payerTotals.first;
 
               return ListView(
                 padding: const EdgeInsets.all(16),
@@ -234,22 +289,101 @@ class _HomeScreenState extends State<HomeScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Shared expenses',
+                          'Total shared expenses',
                           style: textTheme.bodyMedium?.copyWith(
                             color: AppTheme.textSecondary,
                           ),
                         ),
                         const SizedBox(height: 8),
-                        Text('This month', style: textTheme.titleMedium),
+                        Text('All time', style: textTheme.titleMedium),
                         const SizedBox(height: 12),
                         Text(
-                          '\$${monthTotal.toStringAsFixed(2)}',
+                          _currencyFormatter.format(summary.totalAmount),
                           style: textTheme.headlineMedium?.copyWith(
                             fontWeight: FontWeight.w700,
                           ),
                         ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '${summary.totalCount} expense entries - Avg ${_currencyFormatter.format(summary.averageAmount)}',
+                          style: textTheme.bodySmall?.copyWith(
+                            color: AppTheme.mutedText,
+                          ),
+                        ),
                       ],
                     ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DarkCard(
+                          radius: 16,
+                          padding: const EdgeInsets.all(14),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'This month',
+                                style: textTheme.bodySmall?.copyWith(
+                                  color: AppTheme.textSecondary,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                _currencyFormatter.format(summary.monthAmount),
+                                style: textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${summary.monthCount} entries',
+                                style: textTheme.bodySmall?.copyWith(
+                                  color: AppTheme.mutedText,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: DarkCard(
+                          radius: 16,
+                          padding: const EdgeInsets.all(14),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Top payer',
+                                style: textTheme.bodySmall?.copyWith(
+                                  color: AppTheme.textSecondary,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                topPayer?.key ?? 'No data',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                topPayer == null
+                                    ? '-'
+                                    : _currencyFormatter.format(topPayer.value),
+                                style: textTheme.bodySmall?.copyWith(
+                                  color: AppTheme.mutedText,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 20),
                   Text('Quick actions', style: textTheme.titleMedium),
@@ -290,6 +424,91 @@ class _HomeScreenState extends State<HomeScreen> {
                         },
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 20),
+                  Text('Paid by', style: textTheme.titleMedium),
+                  const SizedBox(height: 12),
+                  DarkCard(
+                    radius: 16,
+                    padding: const EdgeInsets.all(14),
+                    child: summary.payerTotals.isEmpty
+                        ? Text(
+                            'No payer data yet.',
+                            style: textTheme.bodyMedium?.copyWith(
+                              color: AppTheme.mutedText,
+                            ),
+                          )
+                        : Column(
+                            children: summary.payerTotals
+                                .take(4)
+                                .map(
+                                  (entry) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 8),
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            entry.key,
+                                            style: textTheme.bodyMedium,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        Text(
+                                          _currencyFormatter.format(entry.value),
+                                          style: textTheme.bodyMedium?.copyWith(
+                                            color: AppTheme.textSecondary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+                          ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text('Categories', style: textTheme.titleMedium),
+                  const SizedBox(height: 12),
+                  DarkCard(
+                    radius: 16,
+                    padding: const EdgeInsets.all(14),
+                    child: summary.categoryTotals.isEmpty
+                        ? Text(
+                            'No category data yet.',
+                            style: textTheme.bodyMedium?.copyWith(
+                              color: AppTheme.mutedText,
+                            ),
+                          )
+                        : Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: summary.categoryTotals
+                                .take(6)
+                                .map(
+                                  (entry) => Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.navOverlay,
+                                      borderRadius: BorderRadius.circular(999),
+                                      border: Border.all(
+                                        color: AppTheme.glowOutlineBlue
+                                            .withAlpha(120),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      '${entry.key}: ${_currencyFormatter.format(entry.value)}',
+                                      style: textTheme.bodySmall?.copyWith(
+                                        color: AppTheme.textSecondary,
+                                      ),
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+                          ),
                   ),
                   const SizedBox(height: 20),
                   Text('Recent expenses', style: textTheme.titleMedium),
@@ -355,7 +574,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
-                                        '${expense.paidBy} - ${expense.category}',
+                                        '${_safeLabel(expense.paidBy, 'Unknown payer')} - ${_safeLabel(expense.category, 'General')}',
                                         style: textTheme.bodySmall?.copyWith(
                                           color: AppTheme.mutedText,
                                         ),
@@ -369,12 +588,19 @@ class _HomeScreenState extends State<HomeScreen> {
                                           color: AppTheme.mutedText,
                                         ),
                                       ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        '${_currencyFormatter.format(_amountPerPerson(expense))} per person',
+                                        style: textTheme.bodySmall?.copyWith(
+                                          color: AppTheme.secondaryAccentBlue,
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ),
                                 const SizedBox(width: 12),
                                 Text(
-                                  '\$${expense.amount.toStringAsFixed(2)}',
+                                  _currencyFormatter.format(expense.amount),
                                   style: textTheme.titleMedium?.copyWith(
                                     color: AppTheme.textPrimary,
                                   ),
@@ -394,6 +620,26 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+}
+
+class _DashboardSummary {
+  const _DashboardSummary({
+    required this.totalAmount,
+    required this.totalCount,
+    required this.averageAmount,
+    required this.monthAmount,
+    required this.monthCount,
+    required this.payerTotals,
+    required this.categoryTotals,
+  });
+
+  final double totalAmount;
+  final int totalCount;
+  final double averageAmount;
+  final double monthAmount;
+  final int monthCount;
+  final List<MapEntry<String, double>> payerTotals;
+  final List<MapEntry<String, double>> categoryTotals;
 }
 
 class _QuickAction extends StatelessWidget {
