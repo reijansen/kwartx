@@ -2,6 +2,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
 import 'firebase_options.dart';
+import 'screens/splash_screen.dart';
+import 'theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,35 +28,13 @@ Future<void> _initializeFirebase() async {
 class KwartXApp extends StatelessWidget {
   const KwartXApp({super.key});
 
-  static const Color _primaryColor = Color(0xFF22C55E);
-  static const Color _backgroundColor = Color(0xFFF9FAFB);
-
   @override
   Widget build(BuildContext context) {
-    final colorScheme = ColorScheme.fromSeed(
-      seedColor: _primaryColor,
-      primary: _primaryColor,
-      surface: _backgroundColor,
-    );
-
     return MaterialApp(
       title: 'KwartX',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: colorScheme,
-        scaffoldBackgroundColor: _backgroundColor,
-      ),
-      home: const KwartXPlaceholderScreen(),
+      theme: AppTheme.lightTheme,
+      home: const SplashScreen(),
     );
-  }
-}
-
-class KwartXPlaceholderScreen extends StatelessWidget {
-  const KwartXPlaceholderScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(body: Center(child: Text('KwartX')));
   }
 }
