@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
-import 'sign_in_screen.dart';
+import 'auth_gate_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -24,7 +24,7 @@ class _SplashScreenState extends State<SplashScreen> {
       }
 
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute<void>(builder: (_) => const SignInScreen()),
+        MaterialPageRoute<void>(builder: (_) => const AuthGateScreen()),
       );
     });
   }
