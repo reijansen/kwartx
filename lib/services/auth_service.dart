@@ -30,5 +30,21 @@ class AuthService {
     );
   }
 
+  Future<void> sendPasswordResetEmail({required String email}) {
+    return _firebaseAuth.sendPasswordResetEmail(email: email);
+  }
+
+  Future<void> updateDisplayName(String displayName) async {
+    final user = _firebaseAuth.currentUser;
+    if (user == null) {
+      throw FirebaseAuthException(
+        code: 'user-not-found',
+        message: 'No authenticated user is available.',
+      );
+    }
+    await user.updateDisplayName(displayName.trim());
+    await user.reload();
+  }
+
   Future<void> signOut() => _firebaseAuth.signOut();
 }

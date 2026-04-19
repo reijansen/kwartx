@@ -45,13 +45,16 @@ class _ReportScreenState extends State<ReportScreen> {
         message: 'Report ready to share.',
         type: AppFeedbackType.success,
       );
-    } catch (_) {
+    } catch (error) {
       if (!mounted) {
         return;
       }
       showAppSnackBar(
         context,
-        message: 'Could not share report right now.',
+        message: mapAppErrorMessage(
+          error,
+          fallback: 'Could not share report right now.',
+        ),
         type: AppFeedbackType.error,
       );
     }

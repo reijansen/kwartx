@@ -125,14 +125,20 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
         type: AppFeedbackType.success,
       );
       Navigator.of(context).pop();
-    } on FirebaseException {
+    } on FirebaseException catch (error) {
       _showMessage(
-        'Unable to save expense right now.',
+        mapAppErrorMessage(
+          error,
+          fallback: 'Unable to save expense right now.',
+        ),
         type: AppFeedbackType.error,
       );
-    } catch (_) {
+    } catch (error) {
       _showMessage(
-        'Something went wrong while saving expense.',
+        mapAppErrorMessage(
+          error,
+          fallback: 'Something went wrong while saving expense.',
+        ),
         type: AppFeedbackType.error,
       );
     } finally {

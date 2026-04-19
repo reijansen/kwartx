@@ -14,6 +14,7 @@ import '../widgets/app_loading_indicator.dart';
 import '../widgets/dark_card.dart';
 import 'expense_form_screen.dart';
 import 'invite_roommate_screen.dart';
+import 'profile_screen.dart';
 import 'report_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -201,13 +202,16 @@ class _HomeScreenState extends State<HomeScreen> {
         message: 'Signed out successfully.',
         type: AppFeedbackType.info,
       );
-    } catch (_) {
+    } catch (error) {
       if (!mounted) {
         return;
       }
       showAppSnackBar(
         context,
-        message: 'Unable to sign out. Please try again.',
+        message: mapAppErrorMessage(
+          error,
+          fallback: 'Unable to sign out. Please try again.',
+        ),
         type: AppFeedbackType.error,
       );
     } finally {
@@ -284,31 +288,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _openProfile() async {
-    final user = widget.authService.currentUser;
-    await showDialog<void>(
-      context: context,
-      builder: (context) {
-        final textTheme = Theme.of(context).textTheme;
-        return AlertDialog(
-          title: const Text('Profile'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                user?.email ?? 'No email available',
-                style: textTheme.bodyLarge,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Close'),
-            ),
-          ],
-        );
-      },
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ProfileScreen(authService: widget.authService),
+      ),
     );
   }
 
@@ -340,13 +323,16 @@ class _HomeScreenState extends State<HomeScreen> {
         message: 'Expense deleted.',
         type: AppFeedbackType.success,
       );
-    } catch (_) {
+    } catch (error) {
       if (!mounted) {
         return;
       }
       showAppSnackBar(
         context,
-        message: 'Failed to delete expense.',
+        message: mapAppErrorMessage(
+          error,
+          fallback: 'Failed to delete expense.',
+        ),
         type: AppFeedbackType.error,
       );
     }

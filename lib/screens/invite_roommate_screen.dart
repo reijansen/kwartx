@@ -72,16 +72,22 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
       }
       showAppSnackBar(
         context,
-        message: error.message ?? 'Could not send invite.',
+        message: mapAppErrorMessage(
+          error,
+          fallback: 'Could not send invite right now.',
+        ),
         type: AppFeedbackType.error,
       );
-    } catch (_) {
+    } catch (error) {
       if (!mounted) {
         return;
       }
       showAppSnackBar(
         context,
-        message: 'Something went wrong while sending invite.',
+        message: mapAppErrorMessage(
+          error,
+          fallback: 'Something went wrong while sending invite.',
+        ),
         type: AppFeedbackType.error,
       );
     }
@@ -98,13 +104,16 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
         message: 'Invite cancelled.',
         type: AppFeedbackType.info,
       );
-    } catch (_) {
+    } catch (error) {
       if (!mounted) {
         return;
       }
       showAppSnackBar(
         context,
-        message: 'Could not cancel invite.',
+        message: mapAppErrorMessage(
+          error,
+          fallback: 'Could not cancel invite.',
+        ),
         type: AppFeedbackType.error,
       );
     }
@@ -121,13 +130,16 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
         message: 'Invite accepted.',
         type: AppFeedbackType.success,
       );
-    } catch (_) {
+    } catch (error) {
       if (!mounted) {
         return;
       }
       showAppSnackBar(
         context,
-        message: 'Could not accept invite.',
+        message: mapAppErrorMessage(
+          error,
+          fallback: 'Could not accept invite.',
+        ),
         type: AppFeedbackType.error,
       );
     }
@@ -144,13 +156,16 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
         message: 'Invite rejected.',
         type: AppFeedbackType.info,
       );
-    } catch (_) {
+    } catch (error) {
       if (!mounted) {
         return;
       }
       showAppSnackBar(
         context,
-        message: 'Could not reject invite.',
+        message: mapAppErrorMessage(
+          error,
+          fallback: 'Could not reject invite.',
+        ),
         type: AppFeedbackType.error,
       );
     }

@@ -1,10 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import '../services/auth_error_mapper.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/input_validators.dart';
 import '../widgets/app_feedback.dart';
 import '../widgets/auth_shell.dart';
 import '../widgets/custom_text_field.dart';
@@ -31,6 +30,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController _confirmPasswordController =
       TextEditingController();
   bool _isLoading = false;
+  String? _inlineMessage;
+  AppFeedbackType _inlineType = AppFeedbackType.info;
 
   @override
   void dispose() {
@@ -50,6 +51,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
     setState(() {
       _isLoading = true;
+      _inlineMessage = null;
     });
 
     try {
@@ -57,14 +59,24 @@ class _SignUpScreenState extends State<SignUpScreen> {
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
+      if (!mounted) {
+        return;
+      }
+      _showInlineFeedback(
+        'Account created successfully. You can now start using KwartX.',
+        type: AppFeedbackType.success,
+      );
     } on FirebaseAuthException catch (error) {
-      _showMessage(
-        mapFirebaseAuthException(error, includeDebugDetails: kDebugMode),
+      _showInlineFeedback(
+        mapAppErrorMessage(
+          error,
+          fallback: 'Unable to create your account right now.',
+        ),
         type: AppFeedbackType.error,
       );
-    } catch (_) {
-      _showMessage(
-        'Something went wrong. Please try again.',
+    } catch (error) {
+      _showInlineFeedback(
+        mapAppErrorMessage(error),
         type: AppFeedbackType.error,
       );
     } finally {
@@ -76,14 +88,17 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
   }
 
-  void _showMessage(
+  void _showInlineFeedback(
     String message, {
     AppFeedbackType type = AppFeedbackType.info,
   }) {
     if (!mounted) {
       return;
     }
-    showAppSnackBar(context, message: message, type: type);
+    setState(() {
+      _inlineMessage = message;
+      _inlineType = type;
+    });
   }
 
   @override
@@ -110,10 +125,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               textInputAction: TextInputAction.next,
               enabled: !_isLoading,
               validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Email is required.';
-                }
-                return null;
+                return InputValidators.email(value);
               },
             ),
             const SizedBox(height: 16),
@@ -126,14 +138,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               textInputAction: TextInputAction.next,
               enabled: !_isLoading,
               validator: (value) {
-                final password = value?.trim() ?? '';
-                if (password.isEmpty) {
-                  return 'Password is required.';
-                }
-                if (password.length < 6) {
-                  return 'Password must be at least 6 characters.';
-                }
-                return null;
+                return InputValidators.signUpPassword(value);
               },
             ),
             const SizedBox(height: 16),
@@ -151,12 +156,25 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 if (confirmPassword.isEmpty) {
                   return 'Confirm your password.';
                 }
+                if (InputValidators.signUpPassword(
+                      _passwordController.text,
+                    ) !=
+                    null) {
+                  return 'Create a stronger password first.';
+                }
                 if (confirmPassword != _passwordController.text.trim()) {
                   return 'Passwords do not match.';
                 }
                 return null;
               },
             ),
+            if (_inlineMessage != null) ...[
+              const SizedBox(height: 14),
+              AppInlineFeedback(
+                message: _inlineMessage!,
+                type: _inlineType,
+              ),
+            ],
             const SizedBox(height: 24),
             PrimaryButton(
               label: 'Sign Up',

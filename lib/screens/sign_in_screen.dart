@@ -1,10 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import '../services/auth_error_mapper.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/input_validators.dart';
 import '../widgets/app_feedback.dart';
 import '../widgets/auth_shell.dart';
 import '../widgets/custom_text_field.dart';
@@ -29,6 +28,8 @@ class _SignInScreenState extends State<SignInScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isLoading = false;
+  String? _inlineMessage;
+  AppFeedbackType _inlineType = AppFeedbackType.info;
 
   @override
   void dispose() {
@@ -47,6 +48,7 @@ class _SignInScreenState extends State<SignInScreen> {
 
     setState(() {
       _isLoading = true;
+      _inlineMessage = null;
     });
 
     try {
@@ -54,14 +56,24 @@ class _SignInScreenState extends State<SignInScreen> {
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
+      if (!mounted) {
+        return;
+      }
+      _showInlineFeedback(
+        'Signed in successfully. Redirecting...',
+        type: AppFeedbackType.success,
+      );
     } on FirebaseAuthException catch (error) {
-      _showMessage(
-        mapFirebaseAuthException(error, includeDebugDetails: kDebugMode),
+      _showInlineFeedback(
+        mapAppErrorMessage(
+          error,
+          fallback: 'Unable to sign in right now. Please try again.',
+        ),
         type: AppFeedbackType.error,
       );
-    } catch (_) {
-      _showMessage(
-        'Something went wrong. Please try again.',
+    } catch (error) {
+      _showInlineFeedback(
+        mapAppErrorMessage(error),
         type: AppFeedbackType.error,
       );
     } finally {
@@ -81,6 +93,132 @@ class _SignInScreenState extends State<SignInScreen> {
       return;
     }
     showAppSnackBar(context, message: message, type: type);
+  }
+
+  void _showInlineFeedback(
+    String message, {
+    AppFeedbackType type = AppFeedbackType.info,
+  }) {
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _inlineMessage = message;
+      _inlineType = type;
+    });
+  }
+
+  Future<void> _handleForgotPassword() async {
+    FocusScope.of(context).unfocus();
+    final initialEmail = _emailController.text.trim();
+    final TextEditingController emailController = TextEditingController(
+      text: initialEmail,
+    );
+    String? dialogError;
+    bool isSending = false;
+
+    final shouldSend = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Reset password'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Enter your account email and we will send a reset link.',
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    enabled: !isSending,
+                    autofocus: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Email',
+                      hintText: 'you@example.com',
+                    ),
+                  ),
+                  if (dialogError != null) ...[
+                    const SizedBox(height: 10),
+                    AppInlineFeedback(
+                      message: dialogError!,
+                      type: AppFeedbackType.error,
+                    ),
+                  ],
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSending
+                      ? null
+                      : () => Navigator.of(context).pop(false),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: isSending
+                      ? null
+                      : () async {
+                          final emailValidationError = InputValidators.email(
+                            emailController.text,
+                          );
+                          if (emailValidationError != null) {
+                            setDialogState(() {
+                              dialogError = emailValidationError;
+                            });
+                            return;
+                          }
+
+                          setDialogState(() {
+                            dialogError = null;
+                            isSending = true;
+                          });
+
+                          try {
+                            await widget.authService.sendPasswordResetEmail(
+                              email: emailController.text.trim(),
+                            );
+                            if (!context.mounted) {
+                              return;
+                            }
+                            Navigator.of(context).pop(true);
+                          } catch (error) {
+                            setDialogState(() {
+                              dialogError = mapAppErrorMessage(
+                                error,
+                                fallback:
+                                    'Unable to send reset email right now.',
+                              );
+                              isSending = false;
+                            });
+                          }
+                        },
+                  child: Text(isSending ? 'Sending...' : 'Send reset link'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    emailController.dispose();
+
+    if (!mounted || shouldSend != true) {
+      return;
+    }
+
+    _showInlineFeedback(
+      'Password reset email sent. Please check your inbox.',
+      type: AppFeedbackType.success,
+    );
+    _showMessage(
+      'Password reset email sent.',
+      type: AppFeedbackType.success,
+    );
   }
 
   @override
@@ -107,10 +245,7 @@ class _SignInScreenState extends State<SignInScreen> {
               textInputAction: TextInputAction.next,
               enabled: !_isLoading,
               validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Email is required.';
-                }
-                return null;
+                return InputValidators.email(value);
               },
             ),
             const SizedBox(height: 16),
@@ -124,12 +259,24 @@ class _SignInScreenState extends State<SignInScreen> {
               enabled: !_isLoading,
               onFieldSubmitted: (_) => _handleSignIn(),
               validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Password is required.';
-                }
-                return null;
+                return InputValidators.signInPassword(value);
               },
             ),
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: _isLoading ? null : _handleForgotPassword,
+                child: const Text('Forgot password?'),
+              ),
+            ),
+            if (_inlineMessage != null) ...[
+              const SizedBox(height: 10),
+              AppInlineFeedback(
+                message: _inlineMessage!,
+                type: _inlineType,
+              ),
+            ],
             const SizedBox(height: 24),
             PrimaryButton(
               label: 'Sign In',

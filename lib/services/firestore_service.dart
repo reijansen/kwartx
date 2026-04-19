@@ -11,8 +11,12 @@ class FirestoreService {
   final FirebaseFirestore _firestore;
   final FirebaseAuth _auth;
 
+  DocumentReference<Map<String, dynamic>> _userDoc(String uid) {
+    return _firestore.collection('users').doc(uid);
+  }
+
   CollectionReference<Map<String, dynamic>> _expensesRef(String uid) {
-    return _firestore.collection('users').doc(uid).collection('expenses');
+    return _userDoc(uid).collection('expenses');
   }
 
   String _requireUid() {
@@ -52,5 +56,26 @@ class FirestoreService {
   Future<void> deleteExpense(String expenseId) async {
     final uid = _requireUid();
     await _expensesRef(uid).doc(expenseId).delete();
+  }
+
+  Future<Map<String, dynamic>?> getCurrentUserProfile() async {
+    final uid = _requireUid();
+    final snapshot = await _userDoc(uid).get();
+    return snapshot.data();
+  }
+
+  Future<void> upsertCurrentUserProfile({
+    required String displayName,
+    String? phoneNumber,
+  }) async {
+    final uid = _requireUid();
+    final user = _auth.currentUser;
+
+    await _userDoc(uid).set({
+      'displayName': displayName.trim(),
+      'phoneNumber': (phoneNumber ?? '').trim(),
+      'email': user?.email?.trim(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
   }
 }
