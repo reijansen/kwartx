@@ -146,6 +146,57 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Future<void> _openAllExpensesSheet(List<ExpenseModel> expenses) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => FractionallySizedBox(
+        heightFactor: 0.85,
+        child: Material(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          color: const Color(0xFFFFF4EC),
+          child: ListView.separated(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+            itemCount: expenses.length + 1,
+            separatorBuilder: (_, separatorIndex) => const SizedBox(height: 10),
+            itemBuilder: (context, index) {
+              if (index == 0) {
+                return Row(
+                  children: [
+                    Text('All Pending Bills', style: Theme.of(context).textTheme.titleLarge),
+                    const Spacer(),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                  ],
+                );
+              }
+              final expense = expenses[index - 1];
+              return _PendingBillCard(
+                expense: expense,
+                status: const _ExpenseStatus(
+                  text: 'Tap to edit',
+                  amountCents: 0,
+                  positive: null,
+                ),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _openExpenseForm(expense: expense);
+                },
+                onDelete: () {
+                  Navigator.of(context).pop();
+                  _deleteExpense(expense);
+                },
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = widget.authService.currentUser;
@@ -254,7 +305,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 _SectionHeader(
                                   title: 'Pending Bills',
                                   actionText: 'View All',
-                                  onTap: () {},
+                                  onTap: () => _openAllExpensesSheet(expenses),
                                 ),
                                 const SizedBox(height: 8),
                                 if (expenses.isEmpty)
@@ -315,6 +366,13 @@ class _HomeScreenState extends State<HomeScreen> {
                                               name: mate.displayName,
                                               subtitle: summary.text,
                                               positive: summary.positive,
+                                              onTap: () {
+                                                Navigator.of(context).push(
+                                                  MaterialPageRoute<void>(
+                                                    builder: (_) => const InviteRoommateScreen(initialTabIndex: 2),
+                                                  ),
+                                                );
+                                              },
                                             ),
                                           );
                                         }),
@@ -708,58 +766,64 @@ class _FriendTile extends StatelessWidget {
     required this.name,
     required this.subtitle,
     required this.positive,
+    this.onTap,
   });
 
   final String name;
   final String subtitle;
   final bool? positive;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
         borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFEAD9),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              name.isEmpty ? 'R' : name[0].toUpperCase(),
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: AppTheme.primaryAccentBlue,
-                    fontWeight: FontWeight.w700,
-                  ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name, style: Theme.of(context).textTheme.titleMedium),
-                Text(
-                  subtitle,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: positive == null
-                            ? AppTheme.mutedText
-                            : (positive! ? AppTheme.successGreen : AppTheme.dangerRed),
-                        fontWeight: positive == null ? FontWeight.w500 : FontWeight.w700,
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFEAD9),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  name.isEmpty ? 'R' : name[0].toUpperCase(),
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: AppTheme.primaryAccentBlue,
+                        fontWeight: FontWeight.w700,
                       ),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(name, style: Theme.of(context).textTheme.titleMedium),
+                    Text(
+                      subtitle,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: positive == null
+                                ? AppTheme.mutedText
+                                : (positive! ? AppTheme.successGreen : AppTheme.dangerRed),
+                            fontWeight: positive == null ? FontWeight.w500 : FontWeight.w700,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded),
+            ],
           ),
-          const Icon(Icons.chevron_right_rounded),
-        ],
+        ),
       ),
     );
   }

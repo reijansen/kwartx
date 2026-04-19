@@ -194,7 +194,7 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
                               tabs: [
                                 Tab(text: 'Sent'),
                                 Tab(text: 'Received'),
-                                Tab(text: 'Roommates'),
+                                Tab(text: 'Same Room'),
                               ],
                             ),
                           ),
@@ -345,8 +345,8 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
         final roommates = snapshot.data ?? const <RoommateModel>[];
         if (roommates.isEmpty) {
           return const _SimpleInviteState(
-            title: 'No roommates yet',
-            subtitle: 'Accepted invites will appear here as roommates.',
+            title: 'No same-room members yet',
+            subtitle: 'Members in your active room will appear here.',
             icon: Icons.people_alt_outlined,
           );
         }

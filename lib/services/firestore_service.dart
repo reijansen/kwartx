@@ -276,23 +276,55 @@ class FirestoreService {
   }
 
   Stream<List<RoommateModel>> getRoommatesStream(String uid) {
-    return _usersRef
-        .doc(uid)
-        .collection('roommates')
-        .orderBy('displayName')
-        .snapshots()
-        .map((snapshot) {
-      return snapshot.docs
-          .map((doc) => RoommateModel.fromMap(doc.id, doc.data()))
-          .toList();
+    return Stream.fromFuture(getCurrentHouseholdId()).asyncExpand((householdId) {
+      return _membersRef
+          .where('householdId', isEqualTo: householdId)
+          .where('status', isEqualTo: 'active')
+          .snapshots()
+          .map((snapshot) {
+        final items = snapshot.docs
+            .map((doc) => doc.data())
+            .where((data) => (data['userId'] as String? ?? '').trim().isNotEmpty)
+            .where((data) => (data['userId'] as String).trim() != uid)
+            .map((data) {
+          final linkedUid = (data['userId'] as String).trim();
+          final displayName = (data['fullName'] as String? ?? '').trim();
+          final email = (data['email'] as String? ?? '').trim();
+          return RoommateModel(
+            id: linkedUid,
+            email: email,
+            displayName: displayName.isEmpty ? email : displayName,
+            linkedUid: linkedUid,
+          );
+        }).toList()
+          ..sort((a, b) => a.displayName.compareTo(b.displayName));
+        return items;
+      });
     });
   }
 
   Future<List<RoommateModel>> getCurrentUserRoommates() async {
     final uid = _requireUid();
-    final snapshot = await _usersRef.doc(uid).collection('roommates').get();
+    final householdId = await getCurrentHouseholdId();
+    final snapshot = await _membersRef
+        .where('householdId', isEqualTo: householdId)
+        .where('status', isEqualTo: 'active')
+        .get();
     final roommates = snapshot.docs
-        .map((doc) => RoommateModel.fromMap(doc.id, doc.data()))
+        .map((doc) => doc.data())
+        .where((data) => (data['userId'] as String? ?? '').trim().isNotEmpty)
+        .where((data) => (data['userId'] as String).trim() != uid)
+        .map((data) {
+          final linkedUid = (data['userId'] as String).trim();
+          final displayName = (data['fullName'] as String? ?? '').trim();
+          final email = (data['email'] as String? ?? '').trim();
+          return RoommateModel(
+            id: linkedUid,
+            email: email,
+            displayName: displayName.isEmpty ? email : displayName,
+            linkedUid: linkedUid,
+          );
+        })
         .toList()
       ..sort((a, b) => a.displayName.compareTo(b.displayName));
     return roommates;
