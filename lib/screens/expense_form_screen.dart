@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -11,6 +12,7 @@ import '../widgets/app_feedback.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/dark_card.dart';
 import '../widgets/primary_button.dart';
+import 'invite_roommate_screen.dart';
 
 class ExpenseFormScreen extends StatefulWidget {
   const ExpenseFormScreen({
@@ -61,6 +63,7 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
   DateTime _selectedDate = DateTime.now();
   bool _isLoadingMeta = true;
   String? _loadError;
+  bool _needsRoomSetup = false;
   bool _isSaving = false;
 
   final Set<String> _selectedParticipants = <String>{};
@@ -131,6 +134,14 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
         _dateController.text = _formatDate(_selectedDate);
       }
     } catch (error) {
+      final message = mapAppErrorMessage(
+        error,
+        fallback: 'Unable to load expense form right now.',
+      );
+      final lower = message.toLowerCase();
+      _needsRoomSetup = lower.contains('no household') ||
+          lower.contains('no active room') ||
+          lower.contains('no active household membership');
       _loadError = mapAppErrorMessage(
         error,
         fallback: 'Unable to load expense form right now.',
@@ -142,6 +153,17 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
         });
       }
     }
+  }
+
+  Future<void> _openRoomsTab() async {
+    if (widget.asDialog && mounted) {
+      Navigator.of(context).pop(false);
+    }
+    await Navigator.of(context).push(
+      CupertinoPageRoute<void>(
+        builder: (_) => const InviteRoommateScreen(initialTabIndex: 3),
+      ),
+    );
   }
 
   List<_PersonOption> get _people {
@@ -353,18 +375,35 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(_loadError!, textAlign: TextAlign.center),
-                const SizedBox(height: 12),
-                FilledButton(
-                  onPressed: () {
-                    setState(() {
-                      _isLoadingMeta = true;
-                      _loadError = null;
-                    });
-                    _loadMeta();
-                  },
-                  child: const Text('Retry'),
+                Text(
+                  _needsRoomSetup ? 'Join or create a room first' : _loadError!,
+                  textAlign: TextAlign.center,
                 ),
+                const SizedBox(height: 6),
+                if (_needsRoomSetup)
+                  Text(
+                    'Expenses are tied to a room. Open Rooms to create or join one.',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                const SizedBox(height: 12),
+                if (_needsRoomSetup)
+                  FilledButton(
+                    onPressed: _openRoomsTab,
+                    child: const Text('Go to Rooms'),
+                  )
+                else
+                  FilledButton(
+                    onPressed: () {
+                      setState(() {
+                        _isLoadingMeta = true;
+                        _loadError = null;
+                        _needsRoomSetup = false;
+                      });
+                      _loadMeta();
+                    },
+                    child: const Text('Retry'),
+                  ),
               ],
             ),
           ),
