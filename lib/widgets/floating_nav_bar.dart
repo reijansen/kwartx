@@ -22,16 +22,16 @@ class FloatingNavBar extends StatelessWidget {
     ];
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(999),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x22000000),
-            blurRadius: 18,
-            offset: Offset(0, 8),
+            color: Color(0x14000000),
+            blurRadius: 14,
+            offset: Offset(0, 6),
           ),
         ],
       ),
@@ -46,10 +46,10 @@ class FloatingNavBar extends StatelessWidget {
               onTap: () => onTap(index),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(vertical: 8),
+                padding: const EdgeInsets.symmetric(vertical: 9),
                 decoration: BoxDecoration(
                   color: selected
-                      ? AppTheme.secondaryAccentBlue.withAlpha(30)
+                      ? AppTheme.secondaryAccentBlue.withAlpha(22)
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(999),
                 ),
@@ -72,6 +72,7 @@ class FloatingNavBar extends StatelessWidget {
                                 : AppTheme.mutedText,
                             fontWeight:
                                 selected ? FontWeight.w700 : FontWeight.w500,
+                            fontSize: 11,
                           ),
                     ),
                   ],

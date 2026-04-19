@@ -126,6 +126,16 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Roommates'),
+          actions: [
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: TextButton.icon(
+                onPressed: _openInviteSheet,
+                icon: const Icon(Icons.person_add_alt_1_rounded),
+                label: const Text('Invite'),
+              ),
+            ),
+          ],
           bottom: const TabBar(
             tabs: [
               Tab(text: 'Sent'),
@@ -133,11 +143,6 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
               Tab(text: 'Roommates'),
             ],
           ),
-        ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: _openInviteSheet,
-          icon: const Icon(Icons.person_add_alt_1_rounded),
-          label: const Text('Invite'),
         ),
         body: Container(
           decoration: const BoxDecoration(gradient: AppTheme.screenGradient),

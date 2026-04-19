@@ -93,7 +93,16 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('KwartX')),
+      appBar: AppBar(
+        title: const Text('KwartX'),
+        actions: [
+          IconButton(
+            tooltip: 'Add expense',
+            onPressed: () => _openExpenseForm(),
+            icon: const Icon(Icons.add_rounded),
+          ),
+        ],
+      ),
       body: Container(
         decoration: const BoxDecoration(gradient: AppTheme.screenGradient),
         child: SafeArea(
@@ -135,12 +144,6 @@ class _HomeScreenState extends State<HomeScreen> {
                               owedCents: 0,
                             ),
                           );
-                          final monthStart = DateTime(DateTime.now().year, DateTime.now().month, 1);
-                          final thisMonthTotal = expenses
-                              .where((e) => !e.date.isBefore(monthStart))
-                              .fold<int>(0, (sum, e) => sum + e.amountCents);
-                          final totalHousehold = expenses.fold<int>(0, (sum, e) => sum + e.amountCents);
-
                           final heroTitle = currentBucket.netCents < 0
                               ? 'You owe'
                               : currentBucket.netCents > 0
@@ -178,13 +181,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                       child: StatCard(
                                         label: 'You are owed',
                                         value: Formatters.currency(currentBucket.youAreOwedCents / 100),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: StatCard(
-                                        label: 'This month',
-                                        value: Formatters.currency(thisMonthTotal / 100),
                                       ),
                                     ),
                                   ],
@@ -269,7 +265,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                           icon: _iconForCategory(expense.category),
                                           title: expense.title,
                                           subtitle:
-                                              '${expense.paidByName} • ${expense.date.year}-${expense.date.month.toString().padLeft(2, '0')}-${expense.date.day.toString().padLeft(2, '0')}',
+                                              '${expense.paidByName} - ${expense.date.year}-${expense.date.month.toString().padLeft(2, '0')}-${expense.date.day.toString().padLeft(2, '0')}',
                                           amount: Formatters.currency(expense.amount),
                                           isPositive: isMine,
                                           onTap: () => _openExpenseForm(expense: expense),
@@ -277,11 +273,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                       ),
                                     );
                                   }),
-                                const SizedBox(height: 4),
-                                StatCard(
-                                  label: 'Total household expenses',
-                                  value: Formatters.currency(totalHousehold / 100),
-                                ),
                               ],
                             ),
                           );
