@@ -267,7 +267,10 @@ class FirestoreService {
       if (rooms.isNotEmpty) {
         await switchActiveRoom(rooms.first.id);
       } else {
-        await createRoom('${profile?.fullName ?? 'My'} Room');
+        await _usersRef.doc(uid).set({
+          'householdId': '',
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
       }
     }
   }

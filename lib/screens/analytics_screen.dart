@@ -26,6 +26,20 @@ class AnalyticsScreen extends StatelessWidget {
                 return const Center(child: CircularProgressIndicator.adaptive());
               }
               if (householdSnapshot.hasError) {
+                final message = householdSnapshot.error.toString();
+                final noHousehold = message.toLowerCase().contains('no household');
+                if (noHousehold) {
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(20),
+                      child: ModernEmptyState(
+                        title: 'No active room yet',
+                        subtitle: 'Join or create a room from Profile to view analytics.',
+                        icon: Icons.groups_rounded,
+                      ),
+                    ),
+                  );
+                }
                 return Center(
                   child: Padding(
                     padding: const EdgeInsets.all(24),
@@ -40,7 +54,7 @@ class AnalyticsScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          householdSnapshot.error.toString(),
+                          message,
                           textAlign: TextAlign.center,
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white70),
                         ),
