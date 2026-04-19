@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../models/invite_model.dart';
+import '../models/room_model.dart';
 import '../models/roommate_model.dart';
+import '../models/user_profile_model.dart';
 import '../services/firestore_service.dart';
 import '../services/invite_service.dart';
 import '../theme/app_theme.dart';
@@ -25,10 +27,17 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
   final InviteService _inviteService = InviteService();
   final FirestoreService _firestoreService = FirestoreService();
   final DateFormat _dateFormatter = DateFormat('MMM d, y - h:mm a');
+  late Future<List<RoomModel>> _roomsFuture;
 
   User? get _currentUser => FirebaseAuth.instance.currentUser;
   String? get _currentEmail => _currentUser?.email?.trim();
   String? get _currentUid => _currentUser?.uid;
+
+  @override
+  void initState() {
+    super.initState();
+    _roomsFuture = _firestoreService.getMyRooms();
+  }
 
   Future<void> _sendInvite({
     required String recipientEmail,
@@ -107,6 +116,136 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
     );
   }
 
+  Future<void> _createRoomDialog() async {
+    final controller = TextEditingController();
+    final created = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Create Room'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(labelText: 'Room name'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Create'),
+          ),
+        ],
+      ),
+    );
+    if (created != true) {
+      return;
+    }
+    try {
+      await _firestoreService.createRoom(controller.text.trim());
+      if (!mounted) {
+        return;
+      }
+      showAppSnackBar(context, message: 'Room created.', type: AppFeedbackType.success);
+      setState(() {
+        _roomsFuture = _firestoreService.getMyRooms();
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      showAppSnackBar(context, message: mapAppErrorMessage(error), type: AppFeedbackType.error);
+    }
+  }
+
+  Future<void> _joinRoomDialog() async {
+    final controller = TextEditingController();
+    final join = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Join Room'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(labelText: 'Room ID'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Join'),
+          ),
+        ],
+      ),
+    );
+    if (join != true) {
+      return;
+    }
+    try {
+      await _firestoreService.joinRoomById(controller.text.trim());
+      if (!mounted) {
+        return;
+      }
+      showAppSnackBar(context, message: 'Joined room.', type: AppFeedbackType.success);
+      setState(() {
+        _roomsFuture = _firestoreService.getMyRooms();
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      showAppSnackBar(context, message: mapAppErrorMessage(error), type: AppFeedbackType.error);
+    }
+  }
+
+  Future<void> _switchRoom(String roomId) async {
+    try {
+      await _firestoreService.switchActiveRoom(roomId);
+      if (!mounted) {
+        return;
+      }
+      showAppSnackBar(context, message: 'Active room switched.', type: AppFeedbackType.success);
+      setState(() {
+        _roomsFuture = _firestoreService.getMyRooms();
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      showAppSnackBar(context, message: mapAppErrorMessage(error), type: AppFeedbackType.error);
+    }
+  }
+
+  Future<void> _leaveRoom(String roomId) async {
+    final confirmed = await showAppConfirmationDialog(
+      context,
+      title: 'Leave room',
+      message: 'Are you sure you want to leave this room?',
+      confirmLabel: 'Leave',
+      isDanger: true,
+    );
+    if (!confirmed) {
+      return;
+    }
+    try {
+      await _firestoreService.leaveRoom(roomId);
+      if (!mounted) {
+        return;
+      }
+      showAppSnackBar(context, message: 'Room left.', type: AppFeedbackType.success);
+      setState(() {
+        _roomsFuture = _firestoreService.getMyRooms();
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      showAppSnackBar(context, message: mapAppErrorMessage(error), type: AppFeedbackType.error);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final uid = _currentUid;
@@ -120,8 +259,8 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
     }
 
     return DefaultTabController(
-      initialIndex: widget.initialTabIndex.clamp(0, 2),
-      length: 3,
+      initialIndex: widget.initialTabIndex.clamp(0, 3),
+      length: 4,
       child: Scaffold(
         body: Container(
           decoration: const BoxDecoration(gradient: AppTheme.heroGradient),
@@ -145,7 +284,7 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
                                   ),
                             ),
                             Text(
-                              'Manage invites and accepted members',
+                              'Manage invites, members, and rooms',
                               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                     color: Colors.white.withAlpha(220),
                                   ),
@@ -195,6 +334,7 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
                                 Tab(text: 'Sent'),
                                 Tab(text: 'Received'),
                                 Tab(text: 'Same Room'),
+                                Tab(text: 'Rooms'),
                               ],
                             ),
                           ),
@@ -205,6 +345,7 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
                               _buildSentTab(uid),
                               _buildReceivedTab(email),
                               _buildRoommatesTab(uid),
+                              _buildRoomsTab(),
                             ],
                           ),
                         ),
@@ -217,6 +358,101 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildRoomsTab() {
+    return StreamBuilder<UserProfileModel?>(
+      stream: _firestoreService.watchCurrentUserProfile(),
+      builder: (context, profileSnapshot) {
+        final activeRoomId = profileSnapshot.data?.householdId ?? '';
+        return FutureBuilder<List<RoomModel>>(
+          future: _roomsFuture,
+          builder: (context, roomSnapshot) {
+            final rooms = roomSnapshot.data ?? const <RoomModel>[];
+            if (roomSnapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: AppLoadingIndicator());
+            }
+            if (roomSnapshot.hasError) {
+              return _SimpleInviteState(
+                title: 'Unable to load rooms',
+                subtitle: mapAppErrorMessage(roomSnapshot.error!),
+                icon: Icons.cloud_off_rounded,
+                onAction: () => setState(() => _roomsFuture = _firestoreService.getMyRooms()),
+                actionLabel: 'Retry',
+              );
+            }
+
+            return ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _joinRoomDialog,
+                        icon: const Icon(Icons.meeting_room_outlined),
+                        label: const Text('Join Room'),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: _createRoomDialog,
+                        icon: const Icon(Icons.add_rounded),
+                        label: const Text('Create Room'),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                if (rooms.isEmpty)
+                  const _SimpleInviteState(
+                    title: 'No rooms yet',
+                    subtitle: 'Create or join a room to start splitting with a group.',
+                    icon: Icons.groups_rounded,
+                  )
+                else
+                  ...rooms.map((room) {
+                    final isActive = room.id == activeRoomId;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: DarkCard(
+                        radius: 16,
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(room.name, style: Theme.of(context).textTheme.titleMedium),
+                                  const SizedBox(height: 4),
+                                  Text('ID: ${room.id}', style: Theme.of(context).textTheme.bodySmall),
+                                ],
+                              ),
+                            ),
+                            if (isActive)
+                              const Chip(label: Text('Active'))
+                            else
+                              TextButton(
+                                onPressed: () => _switchRoom(room.id),
+                                child: const Text('Switch'),
+                              ),
+                            IconButton(
+                              tooltip: 'Leave room',
+                              onPressed: () => _leaveRoom(room.id),
+                              icon: const Icon(Icons.exit_to_app_rounded),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 

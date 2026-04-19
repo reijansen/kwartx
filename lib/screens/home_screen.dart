@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -347,7 +348,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                           actionLabel: 'Invite Roommates',
                                           onAction: () {
                                             Navigator.of(context).push(
-                                              MaterialPageRoute<void>(
+                                              CupertinoPageRoute<void>(
                                                 builder: (_) => const InviteRoommateScreen(),
                                               ),
                                             );
@@ -368,7 +369,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                               positive: summary.positive,
                                               onTap: () {
                                                 Navigator.of(context).push(
-                                                  MaterialPageRoute<void>(
+                                                  CupertinoPageRoute<void>(
                                                     builder: (_) => const InviteRoommateScreen(initialTabIndex: 2),
                                                   ),
                                                 );
