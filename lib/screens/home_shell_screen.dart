@@ -21,11 +21,7 @@ class _HomeShellScreenState extends State<HomeShellScreen> {
   int _index = 0;
 
   Future<void> _openAddExpense() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => const ExpenseFormScreen(),
-      ),
-    );
+    await ExpenseFormScreen.show(context);
   }
 
   @override

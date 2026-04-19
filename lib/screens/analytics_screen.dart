@@ -22,9 +22,41 @@ class AnalyticsScreen extends StatelessWidget {
           child: FutureBuilder<String>(
             future: firestore.getCurrentHouseholdId(),
             builder: (context, householdSnapshot) {
+              if (householdSnapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator.adaptive());
+              }
+              if (householdSnapshot.hasError) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.error_outline_rounded, size: 30, color: Colors.white),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Unable to load analytics',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.white),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          householdSnapshot.error.toString(),
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white70),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
               final uid = householdSnapshot.data ?? '';
               if (uid.isEmpty) {
-                return const Center(child: CircularProgressIndicator.adaptive());
+                return const Center(
+                  child: Text(
+                    'No active room found. Join or create a room first.',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                );
               }
               return StreamBuilder<List<ExpenseModel>>(
                 stream: firestore.getExpensesStream(uid),
@@ -71,11 +103,7 @@ class AnalyticsScreen extends StatelessWidget {
                             ),
                             FilledButton.icon(
                               onPressed: () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute<void>(
-                                    builder: (_) => const ExpenseFormScreen(),
-                                  ),
-                                );
+                                ExpenseFormScreen.show(context);
                               },
                               icon: const Icon(Icons.add_rounded),
                               label: const Text('Add Expense'),

@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../models/expense_model.dart';
 import '../models/expense_participant_model.dart';
+import '../models/room_model.dart';
 import '../models/roommate_model.dart';
 import '../models/user_profile_model.dart';
 
@@ -127,6 +128,148 @@ class FirestoreService {
       );
     }
     return householdId;
+  }
+
+  Future<List<RoomModel>> getMyRooms() async {
+    final uid = _requireUid();
+    final memberships = await _membersRef
+        .where('userId', isEqualTo: uid)
+        .where('status', isEqualTo: 'active')
+        .get();
+
+    final rooms = <RoomModel>[];
+    for (final member in memberships.docs) {
+      final householdId = (member.data()['householdId'] as String? ?? '').trim();
+      if (householdId.isEmpty) {
+        continue;
+      }
+      final roomDoc = await _householdsRef.doc(householdId).get();
+      final roomData = roomDoc.data();
+      if (roomData == null) {
+        continue;
+      }
+      rooms.add(RoomModel.fromMap(roomDoc.id, roomData));
+    }
+    rooms.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return rooms;
+  }
+
+  Future<RoomModel?> getCurrentRoom() async {
+    final householdId = await getCurrentHouseholdId();
+    final doc = await _householdsRef.doc(householdId).get();
+    final data = doc.data();
+    if (data == null) {
+      return null;
+    }
+    return RoomModel.fromMap(doc.id, data);
+  }
+
+  Future<void> createRoom(String roomName) async {
+    final uid = _requireUid();
+    final email = _requireEmail();
+    final profile = await getCurrentUserProfileModel();
+    final trimmedName = roomName.trim();
+    if (trimmedName.isEmpty) {
+      throw FirebaseException(
+        plugin: 'cloud_firestore',
+        message: 'Room name is required.',
+      );
+    }
+
+    final roomRef = _householdsRef.doc();
+    final now = FieldValue.serverTimestamp();
+    await roomRef.set({
+      'id': roomRef.id,
+      'name': trimmedName,
+      'ownerUid': uid,
+      'createdAt': now,
+      'updatedAt': now,
+    }, SetOptions(merge: true));
+
+    await _membersRef.doc('${roomRef.id}_$uid').set({
+      'householdId': roomRef.id,
+      'userId': uid,
+      'fullName': profile?.fullName ?? _auth.currentUser?.displayName ?? email,
+      'email': email,
+      'role': 'owner',
+      'status': 'active',
+      'joinedAt': now,
+    }, SetOptions(merge: true));
+
+    await _usersRef.doc(uid).set({
+      'householdId': roomRef.id,
+      'updatedAt': now,
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> joinRoomById(String roomId) async {
+    final uid = _requireUid();
+    final email = _requireEmail();
+    final profile = await getCurrentUserProfileModel();
+    final targetRoomId = roomId.trim();
+    if (targetRoomId.isEmpty) {
+      throw FirebaseException(
+        plugin: 'cloud_firestore',
+        message: 'Room ID is required.',
+      );
+    }
+
+    final roomDoc = await _householdsRef.doc(targetRoomId).get();
+    if (!roomDoc.exists) {
+      throw FirebaseException(
+        plugin: 'cloud_firestore',
+        message: 'Room not found.',
+      );
+    }
+
+    await _membersRef.doc('${targetRoomId}_$uid').set({
+      'householdId': targetRoomId,
+      'userId': uid,
+      'fullName': profile?.fullName ?? _auth.currentUser?.displayName ?? email,
+      'email': email,
+      'role': 'member',
+      'status': 'active',
+      'joinedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+
+    await switchActiveRoom(targetRoomId);
+  }
+
+  Future<void> switchActiveRoom(String roomId) async {
+    final uid = _requireUid();
+    final targetRoomId = roomId.trim();
+    if (targetRoomId.isEmpty) {
+      throw FirebaseException(
+        plugin: 'cloud_firestore',
+        message: 'Room ID is required.',
+      );
+    }
+    await _usersRef.doc(uid).set({
+      'householdId': targetRoomId,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> leaveRoom(String roomId) async {
+    final uid = _requireUid();
+    final targetRoomId = roomId.trim();
+    if (targetRoomId.isEmpty) {
+      throw FirebaseException(
+        plugin: 'cloud_firestore',
+        message: 'Room ID is required.',
+      );
+    }
+    await _membersRef.doc('${targetRoomId}_$uid').delete();
+
+    final profile = await getCurrentUserProfileModel();
+    if (profile?.householdId == targetRoomId) {
+      final rooms = await getMyRooms();
+      if (rooms.isNotEmpty) {
+        await switchActiveRoom(rooms.first.id);
+      } else {
+        await createRoom('${profile?.fullName ?? 'My'} Room');
+      }
+    }
   }
 
   Stream<List<RoommateModel>> getRoommatesStream(String uid) {

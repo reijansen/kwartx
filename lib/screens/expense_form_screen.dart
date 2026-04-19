@@ -16,9 +16,30 @@ class ExpenseFormScreen extends StatefulWidget {
   const ExpenseFormScreen({
     super.key,
     this.existingExpense,
+    this.asDialog = false,
   });
 
   final ExpenseModel? existingExpense;
+  final bool asDialog;
+
+  static Future<bool?> show(
+    BuildContext context, {
+    ExpenseModel? existingExpense,
+  }) {
+    return showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => FractionallySizedBox(
+        heightFactor: 0.94,
+        child: ExpenseFormScreen(
+          existingExpense: existingExpense,
+          asDialog: true,
+        ),
+      ),
+    );
+  }
 
   @override
   State<ExpenseFormScreen> createState() => _ExpenseFormScreenState();
@@ -39,6 +60,7 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
   String _splitType = 'equal';
   DateTime _selectedDate = DateTime.now();
   bool _isLoadingMeta = true;
+  String? _loadError;
   bool _isSaving = false;
 
   final Set<String> _selectedParticipants = <String>{};
@@ -63,51 +85,63 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
   }
 
   Future<void> _loadMeta() async {
-    final profile = await _firestoreService.getCurrentUserProfileModel();
-    final roommates = await _firestoreService.getCurrentUserRoommates();
-    if (!mounted) {
-      return;
-    }
-    _currentProfile = profile;
-    _roommates = roommates;
+    try {
+      final profile = await _firestoreService.getCurrentUserProfileModel();
+      if (profile == null) {
+        throw StateError('No active room found for your account.');
+      }
+      final roommates = await _firestoreService.getCurrentUserRoommates();
+      if (!mounted) {
+        return;
+      }
+      _currentProfile = profile;
+      _roommates = roommates;
 
-    final people = _people;
-    for (final person in people) {
-      _splitControllers[person.id] = TextEditingController();
-    }
-
-    final existing = widget.existingExpense;
-    if (existing != null) {
-      _titleController.text = existing.title;
-      _amountController.text = (existing.amountCents / 100).toStringAsFixed(2);
-      _notesController.text = existing.notes ?? '';
-      _selectedDate = existing.date;
-      _dateController.text = _formatDate(existing.date);
-      _selectedCategory = existing.category;
-      _splitType = existing.splitType;
-      _paidByUserId = existing.paidByUserId;
-      _selectedParticipants
-        ..clear()
-        ..addAll(existing.participantUserIds);
-      final existingConfig = existing.splitConfig;
+      final people = _people;
       for (final person in people) {
-        final value = existingConfig[person.id]?.toString() ?? '';
-        _splitControllers[person.id]?.text = value;
+        _splitControllers[person.id] ??= TextEditingController();
       }
-    } else {
-      final defaultPayer = _currentProfile?.id;
-      if (defaultPayer != null) {
-        _paidByUserId = defaultPayer;
-      }
-      _selectedParticipants
-        ..clear()
-        ..addAll(people.map((p) => p.id));
-      _dateController.text = _formatDate(_selectedDate);
-    }
 
-    setState(() {
-      _isLoadingMeta = false;
-    });
+      final existing = widget.existingExpense;
+      if (existing != null) {
+        _titleController.text = existing.title;
+        _amountController.text = (existing.amountCents / 100).toStringAsFixed(2);
+        _notesController.text = existing.notes ?? '';
+        _selectedDate = existing.date;
+        _dateController.text = _formatDate(existing.date);
+        _selectedCategory = existing.category;
+        _splitType = existing.splitType;
+        _paidByUserId = existing.paidByUserId;
+        _selectedParticipants
+          ..clear()
+          ..addAll(existing.participantUserIds);
+        final existingConfig = existing.splitConfig;
+        for (final person in people) {
+          final value = existingConfig[person.id]?.toString() ?? '';
+          _splitControllers[person.id]?.text = value;
+        }
+      } else {
+        final defaultPayer = _currentProfile?.id;
+        if (defaultPayer != null) {
+          _paidByUserId = defaultPayer;
+        }
+        _selectedParticipants
+          ..clear()
+          ..addAll(people.map((p) => p.id));
+        _dateController.text = _formatDate(_selectedDate);
+      }
+    } catch (error) {
+      _loadError = mapAppErrorMessage(
+        error,
+        fallback: 'Unable to load expense form right now.',
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingMeta = false;
+        });
+      }
+    }
   }
 
   List<_PersonOption> get _people {
@@ -250,7 +284,11 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
       _isSaving = true;
     });
     try {
-      final paidBy = _people.firstWhere((p) => p.id == _paidByUserId);
+      final payerCandidates = _people.where((p) => p.id == _paidByUserId);
+      if (payerCandidates.isEmpty) {
+        throw StateError('Selected payer is no longer available.');
+      }
+      final paidBy = payerCandidates.first;
       final expense = ExpenseModel(
         id: widget.existingExpense?.id ?? '',
         householdId: widget.existingExpense?.householdId ?? '',
@@ -275,7 +313,7 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
         message: widget.existingExpense == null ? 'Expense added.' : 'Expense updated.',
         type: AppFeedbackType.success,
       );
-      Navigator.of(context).pop();
+      Navigator.of(context).pop(true);
     } catch (error) {
       if (!mounted) {
         return;
@@ -297,170 +335,233 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoadingMeta) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator.adaptive()));
+      return const Material(
+        color: Colors.transparent,
+        child: Center(child: CircularProgressIndicator.adaptive()),
+      );
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.existingExpense == null ? 'Add Expense' : 'Edit Expense'),
-      ),
-      body: Container(
-        decoration: const BoxDecoration(gradient: AppTheme.screenGradient),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: DarkCard(
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    CustomTextField(
-                      label: 'Title',
-                      hintText: 'Rent, groceries, water bill',
-                      controller: _titleController,
-                      prefixIcon: Icons.receipt_long_rounded,
-                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Title is required.' : null,
-                    ),
-                    const SizedBox(height: 12),
-                    CustomTextField(
-                      label: 'Amount',
-                      hintText: '0.00',
-                      controller: _amountController,
-                      prefixIcon: Icons.payments_outlined,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
-                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Amount is required.' : null,
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      initialValue: _selectedCategory,
-                      decoration: const InputDecoration(
-                        labelText: 'Category',
-                        prefixIcon: Icon(Icons.category_outlined),
-                      ),
-                      items: const [
-                        'rent',
-                        'electricity',
-                        'water',
-                        'wifi',
-                        'groceries',
-                        'repairs',
-                        'misc',
-                      ].map((category) {
-                        return DropdownMenuItem<String>(
-                          value: category,
-                          child: Text(category[0].toUpperCase() + category.substring(1)),
-                        );
-                      }).toList(),
-                      onChanged: (value) => setState(() => _selectedCategory = value ?? 'misc'),
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      initialValue: _paidByUserId,
-                      decoration: const InputDecoration(
-                        labelText: 'Paid by',
-                        prefixIcon: Icon(Icons.person_outline_rounded),
-                      ),
-                      items: _people
-                          .map((person) => DropdownMenuItem<String>(
-                                value: person.id,
-                                child: Text(person.name),
-                              ))
-                          .toList(),
-                      onChanged: (value) => setState(() => _paidByUserId = value),
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _dateController,
-                      readOnly: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Date',
-                        prefixIcon: Icon(Icons.calendar_today_outlined),
-                      ),
-                      onTap: _pickDate,
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      initialValue: _splitType,
-                      decoration: const InputDecoration(
-                        labelText: 'Split type',
-                        prefixIcon: Icon(Icons.pie_chart_outline_rounded),
-                      ),
-                      items: const [
-                        DropdownMenuItem(value: 'equal', child: Text('Equal')),
-                        DropdownMenuItem(value: 'exact', child: Text('Exact amounts')),
-                        DropdownMenuItem(value: 'percentage', child: Text('Percentage')),
-                        DropdownMenuItem(value: 'shares', child: Text('Shares/weights')),
-                      ],
-                      onChanged: (value) => setState(() => _splitType = value ?? 'equal'),
-                    ),
-                    const SizedBox(height: 14),
-                    Text('Participants', style: Theme.of(context).textTheme.titleMedium),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: _people.map((person) {
-                        final selected = _selectedParticipants.contains(person.id);
-                        return FilterChip(
-                          selected: selected,
-                          label: Text(person.name),
-                          onSelected: (value) {
-                            setState(() {
-                              if (value) {
-                                _selectedParticipants.add(person.id);
-                              } else {
-                                _selectedParticipants.remove(person.id);
-                              }
-                            });
-                          },
-                        );
-                      }).toList(),
-                    ),
-                    if (_splitType != 'equal') ...[
-                      const SizedBox(height: 12),
-                      ..._people
-                          .where((person) => _selectedParticipants.contains(person.id))
-                          .map((person) {
-                        final label = switch (_splitType) {
-                          'exact' => 'Exact amount',
-                          'percentage' => 'Percentage',
-                          'shares' => 'Shares',
-                          _ => 'Value',
-                        };
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: CustomTextField(
-                            label: '${person.name} • $label',
-                            hintText: _splitType == 'percentage' ? 'e.g. 25' : 'e.g. 1',
-                            controller: _splitControllers[person.id],
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          ),
-                        );
-                      }),
-                    ],
-                    const SizedBox(height: 6),
-                    CustomTextField(
-                      label: 'Notes',
-                      hintText: 'Optional notes',
-                      controller: _notesController,
-                      maxLines: 3,
-                    ),
-                    const SizedBox(height: 16),
-                    PrimaryButton(
-                      label: widget.existingExpense == null ? 'Add Expense' : 'Save Changes',
-                      isLoading: _isSaving,
-                      onPressed: _submit,
-                    ),
-                  ],
+    if (_loadError != null) {
+      return Material(
+        color: widget.asDialog ? Colors.white : Colors.transparent,
+        borderRadius: widget.asDialog
+            ? const BorderRadius.vertical(top: Radius.circular(28))
+            : BorderRadius.zero,
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(_loadError!, textAlign: TextAlign.center),
+                const SizedBox(height: 12),
+                FilledButton(
+                  onPressed: () {
+                    setState(() {
+                      _isLoadingMeta = true;
+                      _loadError = null;
+                    });
+                    _loadMeta();
+                  },
+                  child: const Text('Retry'),
                 ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    final content = Container(
+      decoration: const BoxDecoration(gradient: AppTheme.screenGradient),
+      child: SafeArea(
+        top: !widget.asDialog,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: DarkCard(
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (widget.asDialog) ...[
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            widget.existingExpense == null ? 'Add Expense' : 'Edit Expense',
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.of(context).pop(false),
+                          icon: const Icon(Icons.close_rounded),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  if (!widget.asDialog) ...[
+                    Text(
+                      widget.existingExpense == null ? 'Add Expense' : 'Edit Expense',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                  CustomTextField(
+                    label: 'Title',
+                    hintText: 'Rent, groceries, water bill',
+                    controller: _titleController,
+                    prefixIcon: Icons.receipt_long_rounded,
+                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Title is required.' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  CustomTextField(
+                    label: 'Amount',
+                    hintText: '0.00',
+                    controller: _amountController,
+                    prefixIcon: Icons.payments_outlined,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
+                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Amount is required.' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    initialValue: _selectedCategory,
+                    decoration: const InputDecoration(
+                      labelText: 'Category',
+                      prefixIcon: Icon(Icons.category_outlined),
+                    ),
+                    items: const [
+                      'rent',
+                      'electricity',
+                      'water',
+                      'wifi',
+                      'groceries',
+                      'repairs',
+                      'misc',
+                    ].map((category) {
+                      return DropdownMenuItem<String>(
+                        value: category,
+                        child: Text(category[0].toUpperCase() + category.substring(1)),
+                      );
+                    }).toList(),
+                    onChanged: (value) => setState(() => _selectedCategory = value ?? 'misc'),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    initialValue: _paidByUserId,
+                    decoration: const InputDecoration(
+                      labelText: 'Paid by',
+                      prefixIcon: Icon(Icons.person_outline_rounded),
+                    ),
+                    items: _people
+                        .map((person) => DropdownMenuItem<String>(
+                              value: person.id,
+                              child: Text(person.name),
+                            ))
+                        .toList(),
+                    onChanged: (value) => setState(() => _paidByUserId = value),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _dateController,
+                    readOnly: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Date',
+                      prefixIcon: Icon(Icons.calendar_today_outlined),
+                    ),
+                    onTap: _pickDate,
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    initialValue: _splitType,
+                    decoration: const InputDecoration(
+                      labelText: 'Split type',
+                      prefixIcon: Icon(Icons.pie_chart_outline_rounded),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'equal', child: Text('Equal')),
+                      DropdownMenuItem(value: 'exact', child: Text('Exact amounts')),
+                      DropdownMenuItem(value: 'percentage', child: Text('Percentage')),
+                      DropdownMenuItem(value: 'shares', child: Text('Shares/weights')),
+                    ],
+                    onChanged: (value) => setState(() => _splitType = value ?? 'equal'),
+                  ),
+                  const SizedBox(height: 14),
+                  Text('Participants', style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _people.map((person) {
+                      final selected = _selectedParticipants.contains(person.id);
+                      return FilterChip(
+                        selected: selected,
+                        label: Text(person.name),
+                        onSelected: (value) {
+                          setState(() {
+                            if (value) {
+                              _selectedParticipants.add(person.id);
+                            } else {
+                              _selectedParticipants.remove(person.id);
+                            }
+                          });
+                        },
+                      );
+                    }).toList(),
+                  ),
+                  if (_splitType != 'equal') ...[
+                    const SizedBox(height: 12),
+                    ..._people.where((person) => _selectedParticipants.contains(person.id)).map((person) {
+                      final label = switch (_splitType) {
+                        'exact' => 'Exact amount',
+                        'percentage' => 'Percentage',
+                        'shares' => 'Shares',
+                        _ => 'Value',
+                      };
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: CustomTextField(
+                          label: '${person.name} - $label',
+                          hintText: _splitType == 'percentage' ? 'e.g. 25' : 'e.g. 1',
+                          controller: _splitControllers[person.id],
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        ),
+                      );
+                    }),
+                  ],
+                  const SizedBox(height: 6),
+                  CustomTextField(
+                    label: 'Notes',
+                    hintText: 'Optional notes',
+                    controller: _notesController,
+                    maxLines: 3,
+                  ),
+                  const SizedBox(height: 16),
+                  PrimaryButton(
+                    label: widget.existingExpense == null ? 'Add Expense' : 'Save Changes',
+                    isLoading: _isSaving,
+                    onPressed: _submit,
+                  ),
+                ],
               ),
             ),
           ),
         ),
       ),
     );
+
+    if (widget.asDialog) {
+      return Material(
+        color: Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        clipBehavior: Clip.antiAlias,
+        child: content,
+      );
+    }
+
+    return Scaffold(body: content);
   }
 }
 

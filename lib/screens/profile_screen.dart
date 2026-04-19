@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../models/room_model.dart';
 import '../models/user_profile_model.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
@@ -29,6 +30,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isEditing = false;
   bool _isSaving = false;
   bool _isSigningOut = false;
+  late Future<List<RoomModel>> _roomsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _roomsFuture = _firestoreService.getMyRooms();
+  }
 
   @override
   void dispose() {
@@ -102,6 +110,140 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (mounted) {
         setState(() => _isSigningOut = false);
       }
+    }
+  }
+
+  Future<void> _createRoomDialog() async {
+    final controller = TextEditingController();
+    final created = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Create Room'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            labelText: 'Room name',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Create'),
+          ),
+        ],
+      ),
+    );
+    if (created != true) {
+      return;
+    }
+    try {
+      await _firestoreService.createRoom(controller.text.trim());
+      if (!mounted) {
+        return;
+      }
+      showAppSnackBar(context, message: 'Room created.', type: AppFeedbackType.success);
+      setState(() {
+        _roomsFuture = _firestoreService.getMyRooms();
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      showAppSnackBar(context, message: mapAppErrorMessage(error), type: AppFeedbackType.error);
+    }
+  }
+
+  Future<void> _joinRoomDialog() async {
+    final controller = TextEditingController();
+    final join = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Join Room'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            labelText: 'Room ID',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Join'),
+          ),
+        ],
+      ),
+    );
+    if (join != true) {
+      return;
+    }
+    try {
+      await _firestoreService.joinRoomById(controller.text.trim());
+      if (!mounted) {
+        return;
+      }
+      showAppSnackBar(context, message: 'Joined room.', type: AppFeedbackType.success);
+      setState(() {
+        _roomsFuture = _firestoreService.getMyRooms();
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      showAppSnackBar(context, message: mapAppErrorMessage(error), type: AppFeedbackType.error);
+    }
+  }
+
+  Future<void> _switchRoom(String roomId) async {
+    try {
+      await _firestoreService.switchActiveRoom(roomId);
+      if (!mounted) {
+        return;
+      }
+      showAppSnackBar(context, message: 'Active room switched.', type: AppFeedbackType.success);
+      setState(() {
+        _roomsFuture = _firestoreService.getMyRooms();
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      showAppSnackBar(context, message: mapAppErrorMessage(error), type: AppFeedbackType.error);
+    }
+  }
+
+  Future<void> _leaveRoom(String roomId) async {
+    final confirmed = await showAppConfirmationDialog(
+      context,
+      title: 'Leave room',
+      message: 'Are you sure you want to leave this room?',
+      confirmLabel: 'Leave',
+      isDanger: true,
+    );
+    if (!confirmed) {
+      return;
+    }
+    try {
+      await _firestoreService.leaveRoom(roomId);
+      if (!mounted) {
+        return;
+      }
+      showAppSnackBar(context, message: 'Room left.', type: AppFeedbackType.success);
+      setState(() {
+        _roomsFuture = _firestoreService.getMyRooms();
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      showAppSnackBar(context, message: mapAppErrorMessage(error), type: AppFeedbackType.error);
     }
   }
 
@@ -295,6 +437,78 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 ],
                               ),
                             ),
+                          ),
+                          const SizedBox(height: 12),
+                          FutureBuilder<List<RoomModel>>(
+                            future: _roomsFuture,
+                            builder: (context, roomSnapshot) {
+                              final rooms = roomSnapshot.data ?? const <RoomModel>[];
+                              return DarkCard(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Text(
+                                          'Rooms',
+                                          style: Theme.of(context).textTheme.titleLarge,
+                                        ),
+                                        const Spacer(),
+                                        TextButton.icon(
+                                          onPressed: _joinRoomDialog,
+                                          icon: const Icon(Icons.meeting_room_outlined),
+                                          label: const Text('Join'),
+                                        ),
+                                        FilledButton.icon(
+                                          onPressed: _createRoomDialog,
+                                          icon: const Icon(Icons.add_rounded),
+                                          label: const Text('Create'),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    if (roomSnapshot.connectionState == ConnectionState.waiting)
+                                      const Padding(
+                                        padding: EdgeInsets.symmetric(vertical: 12),
+                                        child: Center(child: CircularProgressIndicator.adaptive()),
+                                      )
+                                    else if (rooms.isEmpty)
+                                      Text(
+                                        'No rooms yet. Create or join one.',
+                                        style: Theme.of(context).textTheme.bodySmall,
+                                      )
+                                    else
+                                      ...rooms.map((room) {
+                                        final isActive = room.id == profile.householdId;
+                                        return ListTile(
+                                          contentPadding: EdgeInsets.zero,
+                                          title: Text(room.name),
+                                          subtitle: Text('ID: ${room.id}'),
+                                          trailing: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              if (isActive)
+                                                const Chip(
+                                                  label: Text('Active'),
+                                                )
+                                              else
+                                                TextButton(
+                                                  onPressed: () => _switchRoom(room.id),
+                                                  child: const Text('Switch'),
+                                                ),
+                                              IconButton(
+                                                tooltip: 'Leave room',
+                                                onPressed: () => _leaveRoom(room.id),
+                                                icon: const Icon(Icons.exit_to_app_rounded),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      }),
+                                  ],
+                                ),
+                              );
+                            },
                           ),
                           const SizedBox(height: 12),
                           if (_isEditing)

@@ -3,11 +3,13 @@ import 'package:intl/intl.dart';
 
 import '../models/expense_model.dart';
 import '../models/expense_participant_model.dart';
+import '../models/invite_model.dart';
 import '../models/roommate_model.dart';
 import '../models/settlement_view_model.dart';
 import '../models/user_profile_model.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
+import '../services/invite_service.dart';
 import '../services/settlement_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
@@ -27,12 +29,12 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final FirestoreService _firestoreService = FirestoreService();
   final SettlementService _settlementService = const SettlementService();
+  final InviteService _inviteService = InviteService();
 
   Future<void> _openExpenseForm({ExpenseModel? expense}) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => ExpenseFormScreen(existingExpense: expense),
-      ),
+    await ExpenseFormScreen.show(
+      context,
+      existingExpense: expense,
     );
   }
 
@@ -55,6 +57,92 @@ class _HomeScreenState extends State<HomeScreen> {
       context,
       message: 'Expense deleted.',
       type: AppFeedbackType.success,
+    );
+  }
+
+  Future<void> _openNotifications({
+    required UserProfileModel profile,
+    required List<InviteModel> invites,
+    required List<SettlementViewModel> settlements,
+  }) async {
+    final pendingInvites = invites.where((it) => it.status == InviteStatus.pending).toList();
+    final settlementItems = settlements
+        .where((it) => it.fromUserId == profile.id || it.toUserId == profile.id)
+        .take(8)
+        .toList();
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => FractionallySizedBox(
+        heightFactor: 0.78,
+        child: Material(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          color: const Color(0xFFFFF4EC),
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+            children: [
+              Row(
+                children: [
+                  Text('Notifications', style: Theme.of(context).textTheme.titleLarge),
+                  const Spacer(),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ],
+              ),
+              if (pendingInvites.isEmpty && settlementItems.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.only(top: 24),
+                  child: Text('No new notifications.'),
+                ),
+              if (pendingInvites.isNotEmpty) ...[
+                Text('Pending Invites', style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 8),
+                ...pendingInvites.map(
+                  (invite) => ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const CircleAvatar(child: Icon(Icons.mail_outline_rounded)),
+                    title: Text(invite.senderDisplayName ?? invite.senderEmail),
+                    subtitle: const Text('Sent you a roommate invite'),
+                  ),
+                ),
+                const SizedBox(height: 10),
+              ],
+              if (settlementItems.isNotEmpty) ...[
+                Text('Balance Updates', style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 8),
+                ...settlementItems.map((tx) {
+                  final isDebtor = tx.fromUserId == profile.id;
+                  final label = isDebtor
+                      ? 'You owe ${tx.toName}'
+                      : '${tx.fromName} owes you';
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: CircleAvatar(
+                      backgroundColor: isDebtor ? const Color(0xFFFDEBEC) : const Color(0xFFE8F8ED),
+                      child: Icon(
+                        isDebtor ? Icons.call_made_rounded : Icons.call_received_rounded,
+                        color: isDebtor ? AppTheme.dangerRed : AppTheme.successGreen,
+                      ),
+                    ),
+                    title: Text(label),
+                    trailing: Text(
+                      Formatters.currency(tx.amountCents / 100),
+                      style: TextStyle(
+                        color: isDebtor ? AppTheme.dangerRed : AppTheme.successGreen,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -122,7 +210,26 @@ class _HomeScreenState extends State<HomeScreen> {
                             child: ListView(
                               padding: const EdgeInsets.fromLTRB(14, 6, 14, 120),
                               children: [
-                                _HomeTopBar(name: profile.fullName),
+                                StreamBuilder<List<InviteModel>>(
+                                  stream: _inviteService.getReceivedInvitesStream(
+                                    _inviteService.normalizeEmail(profile.email),
+                                  ),
+                                  builder: (context, inviteSnapshot) {
+                                    final invites = inviteSnapshot.data ?? const <InviteModel>[];
+                                    final pendingCount = invites
+                                        .where((it) => it.status == InviteStatus.pending)
+                                        .length;
+                                    return _HomeTopBar(
+                                      name: profile.fullName,
+                                      pendingNotifications: pendingCount,
+                                      onNotificationsTap: () => _openNotifications(
+                                        profile: profile,
+                                        invites: invites,
+                                        settlements: settlements,
+                                      ),
+                                    );
+                                  },
+                                ),
                                 const SizedBox(height: 10),
                                 Row(
                                   children: [
@@ -180,7 +287,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text('Friends', style: Theme.of(context).textTheme.titleLarge),
+                                      Text('Roommates', style: Theme.of(context).textTheme.titleLarge),
                                       const SizedBox(height: 10),
                                       if (roommates.isEmpty)
                                         _SoftEmptyCard(
@@ -287,9 +394,15 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class _HomeTopBar extends StatelessWidget {
-  const _HomeTopBar({required this.name});
+  const _HomeTopBar({
+    required this.name,
+    required this.pendingNotifications,
+    required this.onNotificationsTap,
+  });
 
   final String name;
+  final int pendingNotifications;
+  final VoidCallback onNotificationsTap;
 
   @override
   Widget build(BuildContext context) {
@@ -306,14 +419,43 @@ class _HomeTopBar extends StatelessWidget {
               ),
         ),
         const Spacer(),
-        Container(
-          width: 34,
-          height: 34,
-          decoration: BoxDecoration(
-            color: Colors.white.withAlpha(45),
-            borderRadius: BorderRadius.circular(999),
-          ),
-          child: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 20),
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            InkWell(
+              borderRadius: BorderRadius.circular(999),
+              onTap: onNotificationsTap,
+              child: Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: Colors.white.withAlpha(45),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 20),
+              ),
+            ),
+            if (pendingNotifications > 0)
+              Positioned(
+                right: -3,
+                top: -3,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEF4444),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    pendingNotifications > 9 ? '9+' : '$pendingNotifications',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                ),
+              ),
+          ],
         ),
         const SizedBox(width: 8),
         Container(
