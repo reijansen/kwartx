@@ -288,7 +288,7 @@ class FirestoreService {
   }
 
   Stream<List<RoommateModel>> getRoommatesStream(String uid) {
-    return Stream.fromFuture(getCurrentHouseholdId()).asyncExpand((householdId) {
+    final stream = Stream.fromFuture(getCurrentHouseholdId()).asyncExpand((householdId) {
       return _membersRef
           .where('householdId', isEqualTo: householdId)
           .where('status', isEqualTo: 'active')
@@ -313,6 +313,7 @@ class FirestoreService {
         return items;
       });
     });
+    return stream.asBroadcastStream();
   }
 
   Future<List<RoommateModel>> getCurrentUserRoommates() async {
@@ -344,7 +345,7 @@ class FirestoreService {
 
   Stream<List<ExpenseModel>> getExpensesStream(String uid) {
     // Kept method signature for compatibility.
-    return Stream.fromFuture(getCurrentHouseholdId()).asyncExpand((householdId) {
+    final stream = Stream.fromFuture(getCurrentHouseholdId()).asyncExpand((householdId) {
       return _expensesRef
           .where('householdId', isEqualTo: householdId)
           .orderBy('date', descending: true)
@@ -355,6 +356,7 @@ class FirestoreService {
             .toList();
       });
     });
+    return stream.asBroadcastStream();
   }
 
   Stream<List<ExpenseParticipantModel>> getExpenseParticipantsStream(String expenseId) {

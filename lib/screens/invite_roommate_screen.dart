@@ -292,13 +292,17 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
                           ],
                         ),
                       ),
-                      FilledButton.icon(
-                        onPressed: _openInviteSheet,
-                        icon: const Icon(Icons.person_add_alt_1_rounded),
-                        label: const Text('Invite'),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: AppTheme.primaryAccentBlue,
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(minWidth: 96),
+                        child: FilledButton.icon(
+                          onPressed: _openInviteSheet,
+                          icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
+                          label: const Text('Invite'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: AppTheme.primaryAccentBlue,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          ),
                         ),
                       ),
                     ],
@@ -322,6 +326,9 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
                               borderRadius: BorderRadius.circular(14),
                             ),
                             child: const TabBar(
+                              isScrollable: true,
+                              tabAlignment: TabAlignment.start,
+                              labelPadding: EdgeInsets.symmetric(horizontal: 14),
                               indicatorSize: TabBarIndicatorSize.tab,
                               dividerColor: Colors.transparent,
                               indicator: BoxDecoration(

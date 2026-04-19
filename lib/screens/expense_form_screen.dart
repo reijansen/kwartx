@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -90,8 +91,10 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
   Future<void> _loadMeta() async {
     try {
       final profile = await _firestoreService.getCurrentUserProfileModel();
-      if (profile == null) {
-        throw StateError('No active room found for your account.');
+      if (profile == null || profile.householdId.trim().isEmpty) {
+        _needsRoomSetup = true;
+        _loadError = 'No active room yet.';
+        return;
       }
       final roommates = await _firestoreService.getCurrentUserRoommates();
       if (!mounted) {
@@ -134,18 +137,20 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
         _dateController.text = _formatDate(_selectedDate);
       }
     } catch (error) {
-      final message = mapAppErrorMessage(
+      final fallback = mapAppErrorMessage(
         error,
         fallback: 'Unable to load expense form right now.',
       );
-      final lower = message.toLowerCase();
-      _needsRoomSetup = lower.contains('no household') ||
-          lower.contains('no active room') ||
-          lower.contains('no active household membership');
-      _loadError = mapAppErrorMessage(
-        error,
-        fallback: 'Unable to load expense form right now.',
-      );
+      final raw = error.toString().toLowerCase();
+      final firebaseMessage =
+          error is FirebaseException ? (error.message ?? '').toLowerCase() : '';
+      final detectedNoRoom = raw.contains('no household') ||
+          raw.contains('no active room') ||
+          raw.contains('no active household membership') ||
+          firebaseMessage.contains('no household') ||
+          firebaseMessage.contains('no active household membership');
+      _needsRoomSetup = detectedNoRoom;
+      _loadError = detectedNoRoom ? 'No active room yet.' : fallback;
     } finally {
       if (mounted) {
         setState(() {
