@@ -180,7 +180,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final shouldSignOut = await showAppConfirmationDialog(
       context,
       title: 'Sign out',
-      message: 'You will be returned to the sign-in screen.',
+      message: 'Are you sure you want to logout?',
       confirmLabel: 'Sign out',
     );
     if (!shouldSignOut) {
@@ -281,6 +281,52 @@ class _HomeScreenState extends State<HomeScreen> {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(builder: (_) => const InviteRoommateScreen()),
     );
+  }
+
+  Future<void> _openProfile() async {
+    final user = widget.authService.currentUser;
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        final textTheme = Theme.of(context).textTheme;
+        return AlertDialog(
+          title: const Text('Profile'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                user?.email ?? 'No email available',
+                style: textTheme.bodyLarge,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _onMenuSelected(_HomeMenuAction action) async {
+    switch (action) {
+      case _HomeMenuAction.profile:
+        await _openProfile();
+        break;
+      case _HomeMenuAction.invites:
+        await _openInvites();
+        break;
+      case _HomeMenuAction.logout:
+        if (_isSigningOut) {
+          return;
+        }
+        await _handleSignOut();
+        break;
+    }
   }
 
   Future<void> _deleteExpense(ExpenseModel expense) async {
@@ -435,17 +481,49 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: const Text('KwartX'),
         actions: [
-          IconButton(
-            onPressed: _openInvites,
-            tooltip: 'Roommate invites',
-            icon: const Icon(Icons.group_add_rounded),
-          ),
-          IconButton(
-            onPressed: _isSigningOut ? null : _handleSignOut,
-            tooltip: 'Logout',
-            icon: _isSigningOut
-                ? const AppLoadingIndicator(size: 18, strokeWidth: 2)
-                : const Icon(Icons.logout_rounded),
+          PopupMenuButton<_HomeMenuAction>(
+            tooltip: 'Menu',
+            onSelected: _onMenuSelected,
+            itemBuilder: (context) => [
+              const PopupMenuItem<_HomeMenuAction>(
+                value: _HomeMenuAction.profile,
+                child: Row(
+                  children: [
+                    Icon(Icons.person_rounded, size: 18),
+                    SizedBox(width: 10),
+                    Text('Profile'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem<_HomeMenuAction>(
+                value: _HomeMenuAction.invites,
+                child: Row(
+                  children: [
+                    Icon(Icons.group_add_rounded, size: 18),
+                    SizedBox(width: 10),
+                    Text('Invites'),
+                  ],
+                ),
+              ),
+              PopupMenuItem<_HomeMenuAction>(
+                value: _HomeMenuAction.logout,
+                enabled: !_isSigningOut,
+                child: Row(
+                  children: [
+                    _isSigningOut
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: AppLoadingIndicator(size: 18, strokeWidth: 2),
+                          )
+                        : const Icon(Icons.logout_rounded, size: 18),
+                    const SizedBox(width: 10),
+                    const Text('Logout'),
+                  ],
+                ),
+              ),
+            ],
+            icon: const Icon(Icons.menu_rounded),
           ),
         ],
       ),
@@ -1160,6 +1238,8 @@ enum _ExpenseDateFilter {
   const _ExpenseDateFilter(this.label);
   final String label;
 }
+
+enum _HomeMenuAction { profile, invites, logout }
 
 class _QuickAction extends StatelessWidget {
   const _QuickAction({
