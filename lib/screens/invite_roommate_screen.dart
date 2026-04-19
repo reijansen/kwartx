@@ -334,12 +334,15 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
           return const Center(child: AppLoadingIndicator());
         }
         if (snapshot.hasError) {
+          final message = _mapRoommatesError(snapshot.error!);
+          final noRoomState = message.toLowerCase().contains('no active room') ||
+              message.toLowerCase().contains('not an active member');
           return _SimpleInviteState(
-            title: 'Unable to load roommates',
-            subtitle: mapAppErrorMessage(snapshot.error!),
-            icon: Icons.cloud_off_rounded,
-            onAction: () => setState(() {}),
-            actionLabel: 'Retry',
+            title: noRoomState ? 'No active room yet' : 'Unable to load roommates',
+            subtitle: message,
+            icon: noRoomState ? Icons.groups_rounded : Icons.cloud_off_rounded,
+            onAction: noRoomState ? null : () => setState(() {}),
+            actionLabel: noRoomState ? null : 'Retry',
           );
         }
         final roommates = snapshot.data ?? const <RoommateModel>[];
@@ -378,6 +381,27 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
       case InviteStatus.pending:
         return 'Pending';
     }
+  }
+
+  String _mapRoommatesError(Object error) {
+    if (error is FirebaseException) {
+      final code = error.code.toLowerCase();
+      final message = (error.message ?? '').toLowerCase();
+
+      if (message.contains('no household')) {
+        return 'No active room yet. Join or create a room from your Profile page.';
+      }
+      if (message.contains('no active household membership')) {
+        return 'You are not an active member of the selected room. Switch or join a room from Profile.';
+      }
+      if (code.contains('permission-denied')) {
+        return 'You do not have permission to read room members.';
+      }
+      if (code.contains('failed-precondition') || message.contains('index')) {
+        return 'Firestore index is missing for room members query. Create the suggested index in Firebase Console.';
+      }
+    }
+    return mapAppErrorMessage(error);
   }
 }
 

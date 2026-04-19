@@ -119,6 +119,7 @@ class FirestoreService {
   }
 
   Future<String> getCurrentHouseholdId() async {
+    final uid = _requireUid();
     final profile = await getCurrentUserProfileModel();
     final householdId = profile?.householdId.trim() ?? '';
     if (householdId.isEmpty) {
@@ -127,6 +128,17 @@ class FirestoreService {
         message: 'No household found for current user.',
       );
     }
+
+    final membershipDoc = await _membersRef.doc('${householdId}_$uid').get();
+    final membershipData = membershipDoc.data();
+    final isActive = (membershipData?['status'] as String? ?? '').trim().toLowerCase() == 'active';
+    if (!membershipDoc.exists || !isActive) {
+      throw FirebaseException(
+        plugin: 'cloud_firestore',
+        message: 'No active household membership found for current user.',
+      );
+    }
+
     return householdId;
   }
 
