@@ -35,6 +35,7 @@ class AppTheme {
   static final ThemeData lightTheme = ThemeData(
     useMaterial3: true,
     brightness: Brightness.light,
+    fontFamily: '.SF Pro Text',
     colorScheme: const ColorScheme.light(
       primary: primaryAccentBlue,
       secondary: secondaryAccentBlue,

@@ -467,11 +467,11 @@ class _HomeTopBar extends StatelessWidget {
     final firstName = name.split(' ').first;
     return Row(
       children: [
-        const Icon(Icons.pie_chart_rounded, color: Colors.white),
-        const SizedBox(width: 8),
+        const Icon(Icons.pie_chart_rounded, color: Colors.white, size: 24),
+        const SizedBox(width: 10),
         Text(
           'KwartX',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 color: Colors.white,
                 fontWeight: FontWeight.w800,
               ),
@@ -484,13 +484,13 @@ class _HomeTopBar extends StatelessWidget {
               borderRadius: BorderRadius.circular(999),
               onTap: onNotificationsTap,
               child: Container(
-                width: 34,
-                height: 34,
+                width: 42,
+                height: 42,
                 decoration: BoxDecoration(
                   color: Colors.white.withAlpha(45),
                   borderRadius: BorderRadius.circular(999),
                 ),
-                child: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 20),
+                child: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 24),
               ),
             ),
             if (pendingNotifications > 0)
@@ -517,8 +517,8 @@ class _HomeTopBar extends StatelessWidget {
         ),
         const SizedBox(width: 8),
         Container(
-          width: 34,
-          height: 34,
+          width: 42,
+          height: 42,
           decoration: BoxDecoration(
             color: Colors.white.withAlpha(45),
             borderRadius: BorderRadius.circular(999),
@@ -526,7 +526,7 @@ class _HomeTopBar extends StatelessWidget {
           alignment: Alignment.center,
           child: Text(
             firstName.isEmpty ? 'U' : firstName[0].toUpperCase(),
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.w700,
                 ),

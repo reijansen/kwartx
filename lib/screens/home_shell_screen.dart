@@ -34,22 +34,34 @@ class _HomeShellScreenState extends State<HomeShellScreen> {
     ];
 
     return Scaffold(
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 260),
-        switchInCurve: Curves.easeOutCubic,
-        switchOutCurve: Curves.easeInCubic,
-        child: KeyedSubtree(
-          key: ValueKey('tab_$_index'),
-          child: pages[_index],
-        ),
-      ),
-      bottomNavigationBar: SafeArea(
-        top: false,
-        child: FloatingNavBar(
-          currentIndex: _index,
-          onTap: (value) => setState(() => _index = value),
-          onAddPressed: _openAddExpense,
-        ),
+      extendBody: true,
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 260),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              child: KeyedSubtree(
+                key: ValueKey('tab_$_index'),
+                child: pages[_index],
+              ),
+            ),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: SafeArea(
+              top: false,
+              child: FloatingNavBar(
+                currentIndex: _index,
+                onTap: (value) => setState(() => _index = value),
+                onAddPressed: _openAddExpense,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
