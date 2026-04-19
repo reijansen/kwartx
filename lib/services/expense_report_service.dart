@@ -45,14 +45,14 @@ class ExpenseReportService {
         case ReportScope.allTime:
           return true;
         case ReportScope.thisMonth:
-          return expense.createdAt.year == reference.year &&
-              expense.createdAt.month == reference.month;
+          return expense.date.year == reference.year &&
+              expense.date.month == reference.month;
         case ReportScope.thisWeek:
           final weekStart = _startOfWeek(reference);
           final expenseDate = DateTime(
-            expense.createdAt.year,
-            expense.createdAt.month,
-            expense.createdAt.day,
+            expense.date.year,
+            expense.date.month,
+            expense.date.day,
           );
           return !expenseDate.isBefore(weekStart);
       }
@@ -87,7 +87,7 @@ class ExpenseReportService {
     final categoryMap = <String, double>{};
 
     for (final expense in filtered) {
-      final payer = _safeLabel(expense.paidBy, AppConstants.unknownPayer);
+      final payer = _safeLabel(expense.paidByName, AppConstants.unknownPayer);
       final category = _safeLabel(
         expense.category,
         AppConstants.defaultCategory,

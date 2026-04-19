@@ -25,6 +25,8 @@ class SignUpScreen extends StatefulWidget {
 
 class _SignUpScreenState extends State<SignUpScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final TextEditingController _fullNameController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController =
@@ -35,6 +37,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   @override
   void dispose() {
+    _fullNameController.dispose();
+    _phoneController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
@@ -56,6 +60,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
     try {
       await widget.authService.signUpWithEmailPassword(
+        fullName: _fullNameController.text.trim(),
+        phoneNumber: _phoneController.text.trim(),
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
@@ -116,6 +122,33 @@ class _SignUpScreenState extends State<SignUpScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            CustomTextField(
+              label: 'Full Name',
+              hintText: 'Juan Dela Cruz',
+              prefixIcon: Icons.person_outline_rounded,
+              controller: _fullNameController,
+              textInputAction: TextInputAction.next,
+              enabled: !_isLoading,
+              validator: InputValidators.displayName,
+            ),
+            const SizedBox(height: 16),
+            CustomTextField(
+              label: 'Phone Number',
+              hintText: '+63 9XX XXX XXXX',
+              prefixIcon: Icons.call_outlined,
+              controller: _phoneController,
+              keyboardType: TextInputType.phone,
+              textInputAction: TextInputAction.next,
+              enabled: !_isLoading,
+              validator: (value) {
+                final trimmed = value?.trim() ?? '';
+                if (trimmed.isEmpty) {
+                  return 'Phone number is required.';
+                }
+                return InputValidators.phone(value);
+              },
+            ),
+            const SizedBox(height: 16),
             CustomTextField(
               label: 'Email',
               hintText: 'you@example.com',

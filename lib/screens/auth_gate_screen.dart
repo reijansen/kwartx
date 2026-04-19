@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_loading_indicator.dart';
-import 'home_screen.dart';
+import 'home_shell_screen.dart';
 import 'sign_in_screen.dart';
 import 'sign_up_screen.dart';
 
@@ -43,11 +43,11 @@ class _AuthGateScreenState extends State<AuthGateScreen> {
         final user = snapshot.data;
         if (user != null) {
           return AnimatedSwitcher(
-            duration: Duration(milliseconds: 240),
+            duration: const Duration(milliseconds: 240),
             switchInCurve: Curves.easeOutCubic,
             switchOutCurve: Curves.easeInCubic,
-            child: HomeScreen(
-              key: const ValueKey('home_screen'),
+            child: HomeShellScreen(
+              key: const ValueKey('home_shell_screen'),
               authService: _authService,
             ),
           );
@@ -55,7 +55,7 @@ class _AuthGateScreenState extends State<AuthGateScreen> {
 
         if (_showSignUp) {
           return AnimatedSwitcher(
-            duration: Duration(milliseconds: 240),
+            duration: const Duration(milliseconds: 240),
             switchInCurve: Curves.easeOutCubic,
             switchOutCurve: Curves.easeInCubic,
             child: SignUpScreen(
@@ -71,7 +71,7 @@ class _AuthGateScreenState extends State<AuthGateScreen> {
         }
 
         return AnimatedSwitcher(
-          duration: Duration(milliseconds: 240),
+          duration: const Duration(milliseconds: 240),
           switchInCurve: Curves.easeOutCubic,
           switchOutCurve: Curves.easeInCubic,
           child: SignInScreen(

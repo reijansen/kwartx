@@ -23,14 +23,9 @@ class DarkCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(radius),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x33000000),
-            blurRadius: 24,
-            offset: Offset(0, 12),
-          ),
-          BoxShadow(
-            color: Color(0x332D7DFF),
+            color: Color(0x16000000),
             blurRadius: 18,
-            spreadRadius: -10,
+            offset: Offset(0, 8),
           ),
         ],
       ),

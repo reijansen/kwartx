@@ -48,6 +48,8 @@ class InviteService {
   }) async {
     final senderUid = _requireUid();
     final senderEmail = _requireEmail();
+    final senderProfile = await _firestore.collection('users').doc(senderUid).get();
+    final senderFullName = (senderProfile.data()?['fullName'] as String?)?.trim();
     final recipientNormalized = normalizeEmail(recipientEmail);
     final senderNormalized = normalizeEmail(senderEmail);
 
@@ -75,13 +77,12 @@ class InviteService {
       );
     }
 
-    final senderDisplayName = _auth.currentUser?.displayName?.trim();
     final cleanedMessage = (message ?? '').trim();
 
     final inviteDoc = await _invitesRef.add({
       'senderUid': senderUid,
       'senderEmail': senderEmail,
-      'senderDisplayName': senderDisplayName,
+      'senderDisplayName': senderFullName ?? _auth.currentUser?.displayName?.trim(),
       'recipientEmail': recipientEmail.trim(),
       'recipientEmailNormalized': recipientNormalized,
       'status': 'pending',
@@ -139,6 +140,8 @@ class InviteService {
     final uid = _requireUid();
     final email = _requireEmail();
     final normalized = normalizeEmail(email);
+    final recipientProfile = await _firestore.collection('users').doc(uid).get();
+    final recipientFullName = (recipientProfile.data()?['fullName'] as String?)?.trim();
 
     final docRef = _invitesRef.doc(inviteId);
     final snapshot = await docRef.get();
@@ -172,11 +175,36 @@ class InviteService {
       'status': 'accepted',
       'acceptedAt': FieldValue.serverTimestamp(),
       'recipientUid': uid,
+      'recipientDisplayName': recipientFullName,
     });
 
     final senderUid = (data['senderUid'] as String? ?? '').trim();
     final senderEmail = (data['senderEmail'] as String? ?? '').trim();
     final senderDisplayName = (data['senderDisplayName'] as String?)?.trim();
+    final senderProfile = await _firestore.collection('users').doc(senderUid).get();
+    final senderHouseholdId =
+        (senderProfile.data()?['householdId'] as String? ?? '').trim();
+
+    if (senderHouseholdId.isNotEmpty) {
+      await _firestore.collection('users').doc(uid).set({
+        'householdId': senderHouseholdId,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      await _firestore
+          .collection('household_members')
+          .doc('${senderHouseholdId}_$uid')
+          .set({
+        'householdId': senderHouseholdId,
+        'userId': uid,
+        'fullName': recipientFullName,
+        'email': email,
+        'role': 'member',
+        'status': 'active',
+        'joinedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    }
+
     await _firestore
         .collection('users')
         .doc(uid)
@@ -191,6 +219,19 @@ class InviteService {
           'addedAt': FieldValue.serverTimestamp(),
           'source': 'invite',
         }, SetOptions(merge: true));
+
+    await _firestore
+        .collection('users')
+        .doc(senderUid)
+        .collection('roommates')
+        .doc(uid)
+        .set({
+      'email': email,
+      'displayName': recipientFullName ?? email,
+      'linkedUid': uid,
+      'addedAt': FieldValue.serverTimestamp(),
+      'source': 'invite',
+    }, SetOptions(merge: true));
   }
 
   Future<void> rejectInvite(String inviteId) async {

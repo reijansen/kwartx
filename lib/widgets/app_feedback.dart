@@ -45,7 +45,7 @@ void showAppSnackBar(
             child: Text(
               message,
               style: const TextStyle(
-                color: AppTheme.textPrimary,
+                color: Colors.white,
                 fontWeight: FontWeight.w500,
               ),
             ),

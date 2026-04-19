@@ -19,7 +19,7 @@ class KwartXApp extends StatelessWidget {
     return MaterialApp(
       title: 'KwartX',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.darkTheme,
+      theme: AppTheme.lightTheme,
       home: const SplashScreen(),
     );
   }

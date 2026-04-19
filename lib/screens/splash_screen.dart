@@ -65,16 +65,12 @@ class _SplashScreenState extends State<SplashScreen> {
                     height: 86,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: AppTheme.navOverlay.withAlpha(220),
-                      border: Border.all(
-                        color: AppTheme.glowOutlineBlue.withAlpha(170),
-                        width: 1.4,
-                      ),
+                      color: Colors.white,
                       boxShadow: const [
                         BoxShadow(
-                          color: Color(0x662D7DFF),
-                          blurRadius: 30,
-                          spreadRadius: 2,
+                          color: Color(0x1F000000),
+                          blurRadius: 16,
+                          offset: Offset(0, 8),
                         ),
                       ],
                     ),

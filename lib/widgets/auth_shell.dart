@@ -51,16 +51,12 @@ class AuthShell extends StatelessWidget {
                           height: 58,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: const Color(0xAA0E1A2B),
-                            border: Border.all(
-                              color: AppTheme.glowOutlineBlue.withAlpha(180),
-                              width: 1.2,
-                            ),
+                            color: Colors.white,
                             boxShadow: const [
                               BoxShadow(
-                                color: Color(0x442D7DFF),
-                                blurRadius: 26,
-                                spreadRadius: 1,
+                                color: Color(0x1A000000),
+                                blurRadius: 16,
+                                offset: Offset(0, 8),
                               ),
                             ],
                           ),

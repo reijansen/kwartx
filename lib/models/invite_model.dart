@@ -13,6 +13,7 @@ class InviteModel {
     required this.createdAt,
     this.senderDisplayName,
     this.recipientUid,
+    this.recipientDisplayName,
     this.message,
     this.acceptedAt,
     this.rejectedAt,
@@ -27,6 +28,7 @@ class InviteModel {
   final DateTime createdAt;
   final String? senderDisplayName;
   final String? recipientUid;
+  final String? recipientDisplayName;
   final String? message;
   final DateTime? acceptedAt;
   final DateTime? rejectedAt;
@@ -48,6 +50,7 @@ class InviteModel {
       createdAt: createdAt,
       senderDisplayName: (map['senderDisplayName'] as String?)?.trim(),
       recipientUid: (map['recipientUid'] as String?)?.trim(),
+      recipientDisplayName: (map['recipientDisplayName'] as String?)?.trim(),
       message: (map['message'] as String?)?.trim(),
       acceptedAt: _readDateTime(map['acceptedAt']),
       rejectedAt: _readDateTime(map['rejectedAt']),
