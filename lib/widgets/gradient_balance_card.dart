@@ -24,9 +24,9 @@ class GradientBalanceCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x3310B981),
-            blurRadius: 20,
-            offset: Offset(0, 10),
+            color: Color(0x33FF7D4D),
+            blurRadius: 16,
+            offset: Offset(0, 8),
           ),
         ],
       ),

@@ -129,7 +129,7 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
           actions: [
             Padding(
               padding: const EdgeInsets.only(right: 8),
-              child: TextButton.icon(
+              child: FilledButton.icon(
                 onPressed: _openInviteSheet,
                 icon: const Icon(Icons.person_add_alt_1_rounded),
                 label: const Text('Invite'),
@@ -243,10 +243,11 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
                   ? Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        TextButton(
+                        OutlinedButton(
                           onPressed: () => _rejectInvite(invite.id),
                           child: const Text('Decline'),
                         ),
+                        const SizedBox(width: 8),
                         FilledButton(
                           onPressed: () => _acceptInvite(invite.id),
                           child: const Text('Accept'),
@@ -342,7 +343,7 @@ class _SimpleInviteState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: AppTheme.secondaryAccentBlue, size: 36),
+            Icon(icon, color: AppTheme.primaryAccentBlue, size: 36),
             const SizedBox(height: 12),
             Text(title, style: textTheme.titleMedium, textAlign: TextAlign.center),
             const SizedBox(height: 6),
@@ -391,13 +392,13 @@ class InviteTile extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE2E8F0),
+                  color: _statusBackground(status),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
                   status,
                   style: textTheme.bodySmall?.copyWith(
-                    color: AppTheme.textSecondary,
+                    color: _statusColor(status),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -426,6 +427,33 @@ class InviteTile extends StatelessWidget {
     if (item == null) {
       return const [];
     }
-    return [item];
+    return [
+      const SizedBox(width: 8),
+      Flexible(child: item),
+    ];
+  }
+
+  Color _statusBackground(String value) {
+    switch (value.toLowerCase()) {
+      case 'accepted':
+        return const Color(0xFFE8F8ED);
+      case 'declined':
+      case 'cancelled':
+        return const Color(0xFFFDEBEC);
+      default:
+        return const Color(0xFFFFF3E8);
+    }
+  }
+
+  Color _statusColor(String value) {
+    switch (value.toLowerCase()) {
+      case 'accepted':
+        return AppTheme.successGreen;
+      case 'declined':
+      case 'cancelled':
+        return AppTheme.dangerRed;
+      default:
+        return AppTheme.primaryAccentBlue;
+    }
   }
 }

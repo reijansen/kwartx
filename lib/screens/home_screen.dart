@@ -96,10 +96,13 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: const Text('KwartX'),
         actions: [
-          IconButton(
-            tooltip: 'Add expense',
-            onPressed: () => _openExpenseForm(),
-            icon: const Icon(Icons.add_rounded),
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: FilledButton.icon(
+              onPressed: () => _openExpenseForm(),
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Add Expense'),
+            ),
           ),
         ],
       ),

@@ -6,6 +6,7 @@ import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import '../widgets/dark_card.dart';
 import '../widgets/modern_empty_state.dart';
+import 'expense_form_screen.dart';
 
 class AnalyticsScreen extends StatelessWidget {
   const AnalyticsScreen({super.key});
@@ -14,7 +15,25 @@ class AnalyticsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final firestore = FirestoreService();
     return Scaffold(
-      appBar: AppBar(title: const Text('Analytics')),
+      appBar: AppBar(
+        title: const Text('Analytics'),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: FilledButton.icon(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const ExpenseFormScreen(),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Add Expense'),
+            ),
+          ),
+        ],
+      ),
       body: Container(
         decoration: const BoxDecoration(gradient: AppTheme.screenGradient),
         child: FutureBuilder<String>(
@@ -49,15 +68,35 @@ class AnalyticsScreen extends StatelessWidget {
                 return ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
-                    DarkCard(
+                    Container(
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        gradient: AppTheme.heroGradient,
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x33FF7D4D),
+                            blurRadius: 14,
+                            offset: Offset(0, 7),
+                          ),
+                        ],
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Total expenses', style: Theme.of(context).textTheme.titleMedium),
+                          Text(
+                            'Total expenses',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  color: Colors.white.withAlpha(230),
+                                ),
+                          ),
                           const SizedBox(height: 8),
                           Text(
                             Formatters.currency(total / 100),
-                            style: Theme.of(context).textTheme.headlineSmall,
+                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                ),
                           ),
                         ],
                       ),
@@ -73,8 +112,21 @@ class AnalyticsScreen extends StatelessWidget {
                                 padding: const EdgeInsets.only(bottom: 8),
                                 child: Row(
                                   children: [
-                                    Expanded(child: Text(entry.key)),
-                                    Text(Formatters.currency(entry.value / 100)),
+                                    Expanded(
+                                      child: Text(
+                                        entry.key,
+                                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                      ),
+                                    ),
+                                    Text(
+                                      Formatters.currency(entry.value / 100),
+                                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                            color: AppTheme.primaryAccentBlue,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                    ),
                                   ],
                                 ),
                               )),

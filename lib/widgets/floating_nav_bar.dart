@@ -25,13 +25,13 @@ class FloatingNavBar extends StatelessWidget {
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFF2A201B),
         borderRadius: BorderRadius.circular(999),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x14000000),
-            blurRadius: 14,
-            offset: Offset(0, 6),
+            color: Color(0x26000000),
+            blurRadius: 18,
+            offset: Offset(0, 8),
           ),
         ],
       ),
@@ -49,7 +49,7 @@ class FloatingNavBar extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 9),
                 decoration: BoxDecoration(
                   color: selected
-                      ? AppTheme.secondaryAccentBlue.withAlpha(22)
+                      ? AppTheme.primaryAccentBlue
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(999),
                 ),
@@ -60,16 +60,16 @@ class FloatingNavBar extends StatelessWidget {
                       item.icon,
                       size: 20,
                       color: selected
-                          ? AppTheme.secondaryAccentBlue
-                          : AppTheme.mutedText,
+                          ? Colors.white
+                          : Colors.white70,
                     ),
                     const SizedBox(height: 2),
                     Text(
                       item.label,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: selected
-                                ? AppTheme.secondaryAccentBlue
-                                : AppTheme.mutedText,
+                                ? Colors.white
+                                : Colors.white70,
                             fontWeight:
                                 selected ? FontWeight.w700 : FontWeight.w500,
                             fontSize: 11,

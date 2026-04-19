@@ -21,11 +21,12 @@ class DarkCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppTheme.cardBackground,
         borderRadius: BorderRadius.circular(radius),
+        border: Border.all(color: const Color(0xFFF4E4D7)),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x16000000),
-            blurRadius: 18,
-            offset: Offset(0, 8),
+            color: Color(0x12000000),
+            blurRadius: 16,
+            offset: Offset(0, 6),
           ),
         ],
       ),

@@ -31,10 +31,10 @@ class ModernEmptyState extends StatelessWidget {
               width: 62,
               height: 62,
               decoration: BoxDecoration(
-                color: const Color(0xFFE2E8F0),
+                color: const Color(0xFFFFF0E6),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Icon(icon, color: AppTheme.secondaryAccentBlue, size: 30),
+              child: Icon(icon, color: AppTheme.primaryAccentBlue, size: 30),
             ),
             const SizedBox(height: 14),
             Text(
