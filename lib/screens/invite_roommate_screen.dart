@@ -176,7 +176,7 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
       case InviteStatus.accepted:
         return 'Accepted';
       case InviteStatus.rejected:
-        return 'Rejected';
+        return 'Declined';
       case InviteStatus.cancelled:
         return 'Cancelled';
       case InviteStatus.pending:
@@ -285,10 +285,12 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
                     return _InvitesListSection(
                       snapshot: snapshot,
                       emptyTitle: 'No invites yet',
-                      emptySubtitle: 'Invite a roommate to get started.',
+                      emptySubtitle:
+                          'Send your first invite so expenses can be split automatically once they join.',
                       emptyIcon: Icons.mail_outline_rounded,
-                      errorTitle: 'Failed to load invites',
-                      errorSubtitle: 'Please try again.',
+                      errorTitle: 'Unable to load sent invites',
+                      errorSubtitle:
+                          'Check your connection and retry. Your invite history will appear here.',
                       errorIcon: Icons.cloud_off_rounded,
                       onRetry: () => setState(() {}),
                       itemBuilder: (invite) => _InviteListItem(
@@ -316,10 +318,12 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
                     return _InvitesListSection(
                       snapshot: snapshot,
                       emptyTitle: 'No invites yet',
-                      emptySubtitle: 'Invites sent to your email appear here.',
+                      emptySubtitle:
+                          'Incoming roommate invites will appear here. Accept one to join a shared household.',
                       emptyIcon: Icons.mark_email_unread_outlined,
-                      errorTitle: 'Failed to load invites',
-                      errorSubtitle: 'Please try again.',
+                      errorTitle: 'Unable to load received invites',
+                      errorSubtitle:
+                          'Check your connection and retry to fetch incoming invites.',
                       errorIcon: Icons.cloud_off_rounded,
                       onRetry: () => setState(() {}),
                       itemBuilder: (invite) => _InviteListItem(

@@ -1,12 +1,9 @@
-import 'package:intl/intl.dart';
+import '../roommate/utils/money_utils.dart';
 
 class Formatters {
   Formatters._();
 
-  static final NumberFormat _phpCurrency = NumberFormat.currency(
-    locale: 'en_PH',
-    symbol: '₱',
-  );
-
-  static String currency(num value) => _phpCurrency.format(value);
+  static String currency(num value) {
+    return MoneyUtils.formatCents(MoneyUtils.toCents(value));
+  }
 }

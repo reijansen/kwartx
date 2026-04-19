@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../models/expense_model.dart';
+import '../models/roommate_model.dart';
 
 class FirestoreService {
   FirestoreService({FirebaseFirestore? firestore, FirebaseAuth? auth})
@@ -17,6 +18,10 @@ class FirestoreService {
 
   CollectionReference<Map<String, dynamic>> _expensesRef(String uid) {
     return _userDoc(uid).collection('expenses');
+  }
+
+  CollectionReference<Map<String, dynamic>> _roommatesRef(String uid) {
+    return _userDoc(uid).collection('roommates');
   }
 
   String _requireUid() {
@@ -77,5 +82,33 @@ class FirestoreService {
       'email': user?.email?.trim(),
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
+  }
+
+  Stream<List<RoommateModel>> getRoommatesStream(String uid) {
+    return _roommatesRef(uid).snapshots().map((snapshot) {
+      final roommates = snapshot.docs
+          .map((doc) => RoommateModel.fromMap(doc.id, doc.data()))
+          .toList()
+        ..sort((a, b) => a.displayName.compareTo(b.displayName));
+      return roommates;
+    });
+  }
+
+  Future<List<RoommateModel>> getCurrentUserRoommates() async {
+    final uid = _requireUid();
+    final snapshot = await _roommatesRef(uid).get();
+    final roommates = snapshot.docs
+        .map((doc) => RoommateModel.fromMap(doc.id, doc.data()))
+        .toList()
+      ..sort((a, b) => a.displayName.compareTo(b.displayName));
+    return roommates;
+  }
+
+  Future<List<ExpenseModel>> getCurrentUserExpenses() async {
+    final uid = _requireUid();
+    final snapshot = await _expensesRef(uid).orderBy('createdAt', descending: true).get();
+    return snapshot.docs
+        .map((doc) => ExpenseModel.fromMap(doc.id, doc.data()))
+        .toList();
   }
 }

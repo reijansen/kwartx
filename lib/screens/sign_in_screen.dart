@@ -263,13 +263,6 @@ class _SignInScreenState extends State<SignInScreen> {
               },
             ),
             const SizedBox(height: 10),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: _isLoading ? null : _handleForgotPassword,
-                child: const Text('Forgot password?'),
-              ),
-            ),
             if (_inlineMessage != null) ...[
               const SizedBox(height: 10),
               AppInlineFeedback(
@@ -284,23 +277,39 @@ class _SignInScreenState extends State<SignInScreen> {
               onPressed: _handleSignIn,
             ),
             const SizedBox(height: 18),
-            Center(
-              child: Wrap(
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  Text('Need an account? ', style: textTheme.bodyMedium),
-                  TextButton(
-                    onPressed: _isLoading ? null : widget.onNavigateToSignUp,
-                    child: const Text(
-                      'Create one',
-                      style: TextStyle(
-                        color: AppTheme.secondaryAccentBlue,
-                        fontWeight: FontWeight.w600,
+            Row(
+              children: [
+                Expanded(
+                  child: Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Text('No account? ', style: textTheme.bodyMedium),
+                      TextButton(
+                        onPressed: _isLoading ? null : widget.onNavigateToSignUp,
+                        style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                        child: const Text(
+                          'Sign Up',
+                          style: TextStyle(
+                            color: AppTheme.secondaryAccentBlue,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
+                    ],
+                  ),
+                ),
+                TextButton(
+                  onPressed: _isLoading ? null : _handleForgotPassword,
+                  style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                  child: const Text(
+                    'Forgot Password?',
+                    style: TextStyle(
+                      color: AppTheme.secondaryAccentBlue,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ],
         ),

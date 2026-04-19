@@ -3,6 +3,16 @@ import 'package:intl/intl.dart';
 
 import '../constants/app_constants.dart';
 import '../models/expense_model.dart';
+import '../models/roommate_model.dart';
+import '../roommate/enums/expense_category.dart';
+import '../roommate/enums/split_type.dart';
+import '../roommate/models/expense.dart';
+import '../roommate/models/expense_participant.dart';
+import '../roommate/models/household_member.dart';
+import '../roommate/models/settlement_transaction.dart';
+import '../roommate/services/balance_aggregator.dart';
+import '../roommate/services/debt_simplifier.dart';
+import '../roommate/utils/money_utils.dart';
 import '../services/auth_service.dart';
 import '../services/expense_report_service.dart';
 import '../services/firestore_service.dart';
@@ -11,7 +21,10 @@ import '../utils/formatters.dart';
 import '../widgets/app_empty_state.dart';
 import '../widgets/app_feedback.dart';
 import '../widgets/app_loading_indicator.dart';
+import '../widgets/balance_hero_card.dart';
 import '../widgets/dark_card.dart';
+import '../widgets/roommate_context_card.dart';
+import '../widgets/settlements_section.dart';
 import 'expense_form_screen.dart';
 import 'invite_roommate_screen.dart';
 import 'profile_screen.dart';
@@ -28,6 +41,8 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final FirestoreService _firestoreService = FirestoreService();
+  final BalanceAggregator _balanceAggregator = BalanceAggregator();
+  final DebtSimplifier _debtSimplifier = const DebtSimplifier();
   final DateFormat _dateFormatter = DateFormat('MMM d, y');
   final TextEditingController _searchController = TextEditingController();
 
@@ -358,10 +373,129 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  List<HouseholdMember> _buildHouseholdMembers({
+    required String uid,
+    required String email,
+    required List<RoommateModel> roommates,
+  }) {
+    final members = <HouseholdMember>[
+      HouseholdMember(
+        id: uid,
+        displayName: _safeLabel(
+          widget.authService.currentUser?.displayName,
+          email,
+        ),
+        email: email,
+        isCurrentUser: true,
+      ),
+    ];
+    for (final roommate in roommates) {
+      final roommateId = (roommate.linkedUid ?? roommate.id).trim();
+      if (roommateId.isEmpty || roommateId == uid) {
+        continue;
+      }
+      members.add(
+        HouseholdMember(
+          id: roommateId,
+          displayName: roommate.displayName,
+          email: roommate.email,
+        ),
+      );
+    }
+    return members;
+  }
+
+  List<RoommateExpense> _mapLegacyExpensesToDomain({
+    required List<ExpenseModel> expenses,
+    required List<HouseholdMember> members,
+    required String currentUserId,
+  }) {
+    if (members.isEmpty) {
+      return const [];
+    }
+
+    final membersByLabel = <String, HouseholdMember>{};
+    for (final member in members) {
+      membersByLabel[member.displayName.toLowerCase()] = member;
+      membersByLabel[member.email.toLowerCase()] = member;
+    }
+
+    return expenses.map((expense) {
+      final payerMember =
+          membersByLabel[expense.paidBy.trim().toLowerCase()] ??
+          members.firstWhere(
+            (member) => member.id == currentUserId,
+            orElse: () => members.first,
+          );
+
+      final participantCount = expense.splitCount.clamp(1, members.length);
+      final participants = members.take(participantCount).map((member) {
+        return ExpenseParticipant(userId: member.id);
+      }).toList();
+
+      if (!participants.any((participant) => participant.userId == payerMember.id)) {
+        participants[0] = ExpenseParticipant(userId: payerMember.id);
+      }
+
+      return RoommateExpense(
+        id: expense.id,
+        householdId: 'legacy_household',
+        title: expense.title,
+        amountCents: MoneyUtils.toCents(expense.amount),
+        paidByUserId: payerMember.id,
+        createdByUserId: currentUserId,
+        date: expense.createdAt,
+        category: ExpenseCategory.misc,
+        splitType: SplitType.equal,
+        participants: participants,
+        notes: null,
+      );
+    }).toList();
+  }
+
+  List<SettlementTransaction> _buildSettlements({
+    required List<ExpenseModel> expenses,
+    required List<HouseholdMember> members,
+    required String currentUserId,
+  }) {
+    final domainExpenses = _mapLegacyExpensesToDomain(
+      expenses: expenses,
+      members: members,
+      currentUserId: currentUserId,
+    );
+    final balances = _balanceAggregator.aggregate(
+      members: members,
+      expenses: domainExpenses,
+    );
+    return _debtSimplifier.simplify(balances);
+  }
+
+  int _computeCurrentUserNetBalanceCents({
+    required List<ExpenseModel> expenses,
+    required List<HouseholdMember> members,
+    required String currentUserId,
+  }) {
+    final domainExpenses = _mapLegacyExpensesToDomain(
+      expenses: expenses,
+      members: members,
+      currentUserId: currentUserId,
+    );
+    final balances = _balanceAggregator.aggregate(
+      members: members,
+      expenses: domainExpenses,
+    );
+    return balances
+        .where((balance) => balance.userId == currentUserId)
+        .map((it) => it.netBalanceCents)
+        .fold<int>(0, (sum, it) => sum + it);
+  }
+
   Widget _buildContent(
     AsyncSnapshot<List<ExpenseModel>> snapshot,
     TextTheme textTheme,
+    String uid,
     String email,
+    List<RoommateModel> roommates,
   ) {
     if (snapshot.connectionState == ConnectionState.waiting) {
       return const Center(child: AppLoadingIndicator(size: 26));
@@ -407,10 +541,32 @@ class _HomeScreenState extends State<HomeScreen> {
     final topPayer = summary.payerTotals.isEmpty
         ? null
         : summary.payerTotals.first;
+    final members = _buildHouseholdMembers(
+      uid: uid,
+      email: email,
+      roommates: roommates,
+    );
+    final settlements = _buildSettlements(
+      expenses: allExpenses,
+      members: members,
+      currentUserId: uid,
+    );
+    final netBalanceCents = _computeCurrentUserNetBalanceCents(
+      expenses: allExpenses,
+      members: members,
+      currentUserId: uid,
+    );
+    final memberNameById = {
+      for (final member in members) member.id: member.displayName,
+    };
+    final monthCents = MoneyUtils.toCents(summary.monthAmount);
+    final totalCents = MoneyUtils.toCents(summary.totalAmount);
 
     return _DashboardBody(
       textTheme: textTheme,
+      currentUserId: uid,
       email: email,
+      roommates: roommates,
       searchController: _searchController,
       searchQuery: _searchQuery,
       selectedCategory: effectiveCategory,
@@ -422,6 +578,11 @@ class _HomeScreenState extends State<HomeScreen> {
       topPayer: topPayer,
       allExpenses: allExpenses,
       visibleExpenses: expenses,
+      settlements: settlements,
+      netBalanceCents: netBalanceCents,
+      userNameById: memberNameById,
+      monthTotalCents: monthCents,
+      householdTotalCents: totalCents,
       dateFormatter: _dateFormatter,
       formatCurrency: Formatters.currency,
       onRefresh: _onRefresh,
@@ -432,7 +593,7 @@ class _HomeScreenState extends State<HomeScreen> {
       onAddExpense: () => _openExpenseForm(title: 'Add Expense'),
       onSplitBill: () => _openExpenseForm(title: 'Split Bill'),
       onSummaryTap: () => _openReport(allExpenses),
-      onMoreTap: _resetFilters,
+      onInviteRoommates: _openInvites,
       onEditExpense: (expense) =>
           _openExpenseForm(title: 'Edit Expense', expense: expense),
       onDeleteExpense: _deleteExpense,
@@ -469,6 +630,9 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           PopupMenuButton<_HomeMenuAction>(
             tooltip: 'Menu',
+            position: PopupMenuPosition.under,
+            color: AppTheme.cardBackground,
+            surfaceTintColor: Colors.transparent,
             onSelected: _onMenuSelected,
             itemBuilder: (context) => [
               const PopupMenuItem<_HomeMenuAction>(
@@ -513,13 +677,24 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _openExpenseForm(title: 'Add Expense'),
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('Add Expense'),
+      ),
       body: Container(
         decoration: const BoxDecoration(gradient: AppTheme.screenGradient),
         child: SafeArea(
-          child: StreamBuilder<List<ExpenseModel>>(
-            stream: _firestoreService.getExpensesStream(uid),
-            builder: (context, snapshot) {
-              return _buildContent(snapshot, textTheme, email);
+          child: StreamBuilder<List<RoommateModel>>(
+            stream: _firestoreService.getRoommatesStream(uid),
+            builder: (context, roommatesSnapshot) {
+              final roommates = roommatesSnapshot.data ?? const <RoommateModel>[];
+              return StreamBuilder<List<ExpenseModel>>(
+                stream: _firestoreService.getExpensesStream(uid),
+                builder: (context, snapshot) {
+                  return _buildContent(snapshot, textTheme, uid, email, roommates);
+                },
+              );
             },
           ),
         ),
@@ -531,7 +706,9 @@ class _HomeScreenState extends State<HomeScreen> {
 class _DashboardBody extends StatelessWidget {
   const _DashboardBody({
     required this.textTheme,
+    required this.currentUserId,
     required this.email,
+    required this.roommates,
     required this.searchController,
     required this.searchQuery,
     required this.selectedCategory,
@@ -543,6 +720,11 @@ class _DashboardBody extends StatelessWidget {
     required this.topPayer,
     required this.allExpenses,
     required this.visibleExpenses,
+    required this.settlements,
+    required this.netBalanceCents,
+    required this.userNameById,
+    required this.monthTotalCents,
+    required this.householdTotalCents,
     required this.dateFormatter,
     required this.formatCurrency,
     required this.onRefresh,
@@ -553,7 +735,7 @@ class _DashboardBody extends StatelessWidget {
     required this.onAddExpense,
     required this.onSplitBill,
     required this.onSummaryTap,
-    required this.onMoreTap,
+    required this.onInviteRoommates,
     required this.onEditExpense,
     required this.onDeleteExpense,
     required this.onConfirmDelete,
@@ -562,7 +744,9 @@ class _DashboardBody extends StatelessWidget {
   });
 
   final TextTheme textTheme;
+  final String currentUserId;
   final String email;
+  final List<RoommateModel> roommates;
   final TextEditingController searchController;
   final String searchQuery;
   final String selectedCategory;
@@ -574,6 +758,11 @@ class _DashboardBody extends StatelessWidget {
   final MapEntry<String, double>? topPayer;
   final List<ExpenseModel> allExpenses;
   final List<ExpenseModel> visibleExpenses;
+  final List<SettlementTransaction> settlements;
+  final int netBalanceCents;
+  final Map<String, String> userNameById;
+  final int monthTotalCents;
+  final int householdTotalCents;
   final DateFormat dateFormatter;
   final String Function(num value) formatCurrency;
   final Future<void> Function() onRefresh;
@@ -584,7 +773,7 @@ class _DashboardBody extends StatelessWidget {
   final VoidCallback onAddExpense;
   final VoidCallback onSplitBill;
   final VoidCallback onSummaryTap;
-  final VoidCallback onMoreTap;
+  final VoidCallback onInviteRoommates;
   final ValueChanged<ExpenseModel> onEditExpense;
   final Future<void> Function(ExpenseModel expense) onDeleteExpense;
   final Future<bool> Function(ExpenseModel expense) onConfirmDelete;
@@ -593,6 +782,8 @@ class _DashboardBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final showFilters = allExpenses.length >= 3;
+
     return RefreshIndicator(
       color: AppTheme.secondaryAccentBlue,
       backgroundColor: AppTheme.navOverlay,
@@ -641,128 +832,146 @@ class _DashboardBody extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 18),
-          TextField(
-            controller: searchController,
-            style: textTheme.bodyMedium,
-            decoration: InputDecoration(
-              hintText: 'Search by title, payer, or category',
-              prefixIcon: const Icon(Icons.search_rounded),
-              suffixIcon: searchQuery.isEmpty
-                  ? null
-                  : IconButton(
-                      icon: const Icon(Icons.close_rounded),
-                      onPressed: searchController.clear,
-                    ),
-            ),
+          const SizedBox(height: 14),
+          RoommateContextCard(
+            roommates: roommates,
+            onInvitePressed: onInviteRoommates,
           ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: Container(
+          BalanceHeroCard(
+            netBalanceCents: netBalanceCents,
+            monthTotalCents: monthTotalCents,
+            householdTotalCents: householdTotalCents,
+            topPayerLabel: topPayer?.key ?? 'No data yet',
+          ),
+          const SizedBox(height: 14),
+          SettlementsSection(
+            currentUserId: currentUserId,
+            userNameById: userNameById,
+            settlements: settlements,
+          ),
+          const SizedBox(height: 18),
+          if (showFilters) ...[
+            TextField(
+              controller: searchController,
+              style: textTheme.bodyMedium,
+              decoration: InputDecoration(
+                hintText: 'Search by title, payer, or category',
+                prefixIcon: const Icon(Icons.search_rounded),
+                suffixIcon: searchQuery.isEmpty
+                    ? null
+                    : IconButton(
+                        icon: const Icon(Icons.close_rounded),
+                        onPressed: searchController.clear,
+                      ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: AppTheme.cardBackground.withAlpha(210),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: AppTheme.glowOutlineBlue.withAlpha(70),
+                      ),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: selectedCategory,
+                        dropdownColor: AppTheme.cardBackground,
+                        iconEnabledColor: AppTheme.textSecondary,
+                        style: textTheme.bodyMedium,
+                        isExpanded: true,
+                        items: categories
+                            .map(
+                              (category) => DropdownMenuItem<String>(
+                                value: category,
+                                child: Text(
+                                  category == _HomeScreenState._allCategoriesKey
+                                      ? 'Category: All'
+                                      : category,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (value) {
+                          if (value == null) {
+                            return;
+                          }
+                          onCategoryChanged(value);
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Container(
                   decoration: BoxDecoration(
-                    color: AppTheme.cardBackground.withAlpha(210),
+                    color: AppTheme.navOverlay,
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
-                      color: AppTheme.glowOutlineBlue.withAlpha(70),
+                      color: AppTheme.glowOutlineBlue.withAlpha(90),
                     ),
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: selectedCategory,
-                      dropdownColor: AppTheme.cardBackground,
-                      iconEnabledColor: AppTheme.textSecondary,
-                      style: textTheme.bodyMedium,
-                      isExpanded: true,
-                      items: categories
-                          .map(
-                            (category) => DropdownMenuItem<String>(
-                              value: category,
-                              child: Text(
-                                category == _HomeScreenState._allCategoriesKey
-                                    ? 'Category: All'
-                                    : category,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (value) {
-                        if (value == null) {
-                          return;
-                        }
-                        onCategoryChanged(value);
-                      },
+                  child: PopupMenuButton<_ExpenseSortOption>(
+                    tooltip: 'Sort',
+                    color: AppTheme.cardBackground,
+                    icon: const Icon(
+                      Icons.sort_rounded,
+                      color: AppTheme.textSecondary,
                     ),
+                    onSelected: onSortChanged,
+                    itemBuilder: (context) {
+                      return _ExpenseSortOption.values.map((option) {
+                        return PopupMenuItem<_ExpenseSortOption>(
+                          value: option,
+                          child: Row(
+                            children: [
+                              Expanded(child: Text(option.label)),
+                              if (sortOption == option)
+                                const Icon(
+                                  Icons.check_rounded,
+                                  size: 16,
+                                  color: AppTheme.secondaryAccentBlue,
+                                ),
+                            ],
+                          ),
+                        );
+                      }).toList();
+                    },
                   ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              Container(
-                decoration: BoxDecoration(
-                  color: AppTheme.navOverlay,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: AppTheme.glowOutlineBlue.withAlpha(90),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _ExpenseDateFilter.values.map((option) {
+                final selected = dateFilter == option;
+                return ChoiceChip(
+                  label: Text(option.label),
+                  selected: selected,
+                  onSelected: (_) => onDateFilterChanged(option),
+                  selectedColor: AppTheme.glowOutlineBlue.withAlpha(80),
+                  backgroundColor: AppTheme.navOverlay,
+                  side: BorderSide(
+                    color: selected
+                        ? AppTheme.secondaryAccentBlue
+                        : AppTheme.glowOutlineBlue.withAlpha(70),
                   ),
-                ),
-                child: PopupMenuButton<_ExpenseSortOption>(
-                  tooltip: 'Sort',
-                  color: AppTheme.cardBackground,
-                  icon: const Icon(
-                    Icons.sort_rounded,
-                    color: AppTheme.textSecondary,
+                  labelStyle: textTheme.bodySmall?.copyWith(
+                    color: selected ? AppTheme.textPrimary : AppTheme.textSecondary,
                   ),
-                  onSelected: onSortChanged,
-                  itemBuilder: (context) {
-                    return _ExpenseSortOption.values.map((option) {
-                      return PopupMenuItem<_ExpenseSortOption>(
-                        value: option,
-                        child: Row(
-                          children: [
-                            Expanded(child: Text(option.label)),
-                            if (sortOption == option)
-                              const Icon(
-                                Icons.check_rounded,
-                                size: 16,
-                                color: AppTheme.secondaryAccentBlue,
-                              ),
-                          ],
-                        ),
-                      );
-                    }).toList();
-                  },
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: _ExpenseDateFilter.values.map((option) {
-              final selected = dateFilter == option;
-              return ChoiceChip(
-                label: Text(option.label),
-                selected: selected,
-                onSelected: (_) => onDateFilterChanged(option),
-                selectedColor: AppTheme.glowOutlineBlue.withAlpha(80),
-                backgroundColor: AppTheme.navOverlay,
-                side: BorderSide(
-                  color: selected
-                      ? AppTheme.secondaryAccentBlue
-                      : AppTheme.glowOutlineBlue.withAlpha(70),
-                ),
-                labelStyle: textTheme.bodySmall?.copyWith(
-                  color: selected
-                      ? AppTheme.textPrimary
-                      : AppTheme.textSecondary,
-                ),
-              );
-            }).toList(),
-          ),
+                );
+              }).toList(),
+            ),
+          ],
           if (hasActiveFilters) ...[
             const SizedBox(height: 8),
             Align(
@@ -832,30 +1041,24 @@ class _DashboardBody extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 18),
-          Text('Quick actions', style: textTheme.titleMedium),
-          const SizedBox(height: 12),
+          Text('Secondary actions', style: textTheme.titleMedium),
+          const SizedBox(height: 10),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _QuickAction(
-                icon: Icons.add_circle_outline_rounded,
-                label: 'Add',
-                onTap: onAddExpense,
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: onSplitBill,
+                  icon: const Icon(Icons.handshake_outlined),
+                  label: const Text('Settle up'),
+                ),
               ),
-              _QuickAction(
-                icon: Icons.call_split_rounded,
-                label: 'Split',
-                onTap: onSplitBill,
-              ),
-              _QuickAction(
-                icon: Icons.bar_chart_rounded,
-                label: 'Report',
-                onTap: onSummaryTap,
-              ),
-              _QuickAction(
-                icon: Icons.restart_alt_rounded,
-                label: 'Reset',
-                onTap: onMoreTap,
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: onSummaryTap,
+                  icon: const Icon(Icons.bar_chart_rounded),
+                  label: const Text('View report'),
+                ),
               ),
             ],
           ),
@@ -1091,8 +1294,8 @@ class _ExpensesListBody extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     if (allExpenses.isEmpty) {
       return AppEmptyState(
-        title: 'No expenses yet',
-        subtitle: 'Add your first shared expense to get started.',
+        title: 'No recent expenses yet',
+        subtitle: 'Start by adding your first shared expense.',
         icon: Icons.receipt_long_rounded,
         actionLabel: 'Add expense',
         onActionPressed: onAddFirstExpense,
@@ -1226,57 +1429,3 @@ enum _ExpenseDateFilter {
 }
 
 enum _HomeMenuAction { profile, invites, logout }
-
-class _QuickAction extends StatelessWidget {
-  const _QuickAction({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: SizedBox(
-        width: 76,
-        child: Column(
-          children: [
-            Container(
-              width: 54,
-              height: 54,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppTheme.navOverlay,
-                border: Border.all(
-                  color: AppTheme.glowOutlineBlue.withAlpha(140),
-                ),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x442D7DFF),
-                    blurRadius: 16,
-                    spreadRadius: -6,
-                  ),
-                ],
-              ),
-              child: Icon(icon, color: AppTheme.secondaryAccentBlue),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: textTheme.bodySmall?.copyWith(
-                color: AppTheme.textSecondary,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
