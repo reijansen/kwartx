@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -385,6 +386,17 @@ class _InvitesListSection extends StatelessWidget {
   final VoidCallback onRetry;
   final Widget Function(InviteModel invite) itemBuilder;
 
+  String _debugAwareErrorSubtitle() {
+    if (!snapshot.hasError || snapshot.error == null) {
+      return errorSubtitle;
+    }
+    final friendly = mapAppErrorMessage(snapshot.error!, fallback: errorSubtitle);
+    if (!kDebugMode) {
+      return friendly;
+    }
+    return '$friendly\nDebug: ${snapshot.error.runtimeType} - ${snapshot.error}';
+  }
+
   @override
   Widget build(BuildContext context) {
     if (snapshot.connectionState == ConnectionState.waiting) {
@@ -397,7 +409,7 @@ class _InvitesListSection extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           child: _InlineStateMessage(
             title: errorTitle,
-            subtitle: errorSubtitle,
+            subtitle: _debugAwareErrorSubtitle(),
             icon: errorIcon,
             actionLabel: 'Retry',
             onActionPressed: onRetry,

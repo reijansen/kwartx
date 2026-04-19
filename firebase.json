@@ -1,1 +1,26 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"kwartx","appId":"1:344757706040:android:b9b8b9f52d4ab05528f5cd","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"kwartx","configurations":{"android":"1:344757706040:android:b9b8b9f52d4ab05528f5cd","web":"1:344757706040:web:c1d90e2660eb108528f5cd"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "kwartx",
+          "appId": "1:344757706040:android:b9b8b9f52d4ab05528f5cd",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "kwartx",
+          "configurations": {
+            "android": "1:344757706040:android:b9b8b9f52d4ab05528f5cd",
+            "web": "1:344757706040:web:c1d90e2660eb108528f5cd"
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  }
+}
