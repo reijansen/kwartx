@@ -27,17 +27,10 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
   final InviteService _inviteService = InviteService();
   final FirestoreService _firestoreService = FirestoreService();
   final DateFormat _dateFormatter = DateFormat('MMM d, y - h:mm a');
-  late Future<List<RoomModel>> _roomsFuture;
 
   User? get _currentUser => FirebaseAuth.instance.currentUser;
   String? get _currentEmail => _currentUser?.email?.trim();
   String? get _currentUid => _currentUser?.uid;
-
-  @override
-  void initState() {
-    super.initState();
-    _roomsFuture = _firestoreService.getMyRooms();
-  }
 
   Future<void> _sendInvite({
     required String recipientEmail,
@@ -147,9 +140,7 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
         return;
       }
       showAppSnackBar(context, message: 'Room created.', type: AppFeedbackType.success);
-      setState(() {
-        _roomsFuture = _firestoreService.getMyRooms();
-      });
+      setState(() {});
     } catch (error) {
       if (!mounted) {
         return;
@@ -189,9 +180,7 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
         return;
       }
       showAppSnackBar(context, message: 'Joined room.', type: AppFeedbackType.success);
-      setState(() {
-        _roomsFuture = _firestoreService.getMyRooms();
-      });
+      setState(() {});
     } catch (error) {
       if (!mounted) {
         return;
@@ -207,9 +196,7 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
         return;
       }
       showAppSnackBar(context, message: 'Active room switched.', type: AppFeedbackType.success);
-      setState(() {
-        _roomsFuture = _firestoreService.getMyRooms();
-      });
+      setState(() {});
     } catch (error) {
       if (!mounted) {
         return;
@@ -235,9 +222,7 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
         return;
       }
       showAppSnackBar(context, message: 'Room left.', type: AppFeedbackType.success);
-      setState(() {
-        _roomsFuture = _firestoreService.getMyRooms();
-      });
+      setState(() {});
     } catch (error) {
       if (!mounted) {
         return;
@@ -374,7 +359,7 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
       builder: (context, profileSnapshot) {
         final activeRoomId = profileSnapshot.data?.householdId ?? '';
         return FutureBuilder<List<RoomModel>>(
-          future: _roomsFuture,
+          future: _firestoreService.getMyRooms(),
           builder: (context, roomSnapshot) {
             final rooms = roomSnapshot.data ?? const <RoomModel>[];
             if (roomSnapshot.connectionState == ConnectionState.waiting) {
@@ -385,7 +370,7 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
                 title: 'Unable to load rooms',
                 subtitle: mapAppErrorMessage(roomSnapshot.error!),
                 icon: Icons.cloud_off_rounded,
-                onAction: () => setState(() => _roomsFuture = _firestoreService.getMyRooms()),
+                onAction: () => setState(() {}),
                 actionLabel: 'Retry',
               );
             }

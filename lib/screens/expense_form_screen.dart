@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -65,6 +65,7 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
   bool _isLoadingMeta = true;
   String? _loadError;
   bool _needsRoomSetup = false;
+  bool _needsAuth = false;
   bool _isSaving = false;
 
   final Set<String> _selectedParticipants = <String>{};
@@ -90,6 +91,13 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
 
   Future<void> _loadMeta() async {
     try {
+      final authUser = FirebaseAuth.instance.currentUser;
+      if (authUser == null || authUser.uid.isEmpty) {
+        _needsAuth = true;
+        _loadError = 'Your session has expired.';
+        return;
+      }
+
       final profile = await _firestoreService.getCurrentUserProfileModel();
       if (profile == null || profile.householdId.trim().isEmpty) {
         _needsRoomSetup = true;
@@ -149,8 +157,13 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
           raw.contains('no active household membership') ||
           firebaseMessage.contains('no household') ||
           firebaseMessage.contains('no active household membership');
+      final detectedNoAuth = raw.contains('not authenticated') ||
+          firebaseMessage.contains('not authenticated');
+      _needsAuth = detectedNoAuth;
       _needsRoomSetup = detectedNoRoom;
-      _loadError = detectedNoRoom ? 'No active room yet.' : fallback;
+      _loadError = detectedNoAuth
+          ? 'Your session has expired.'
+          : (detectedNoRoom ? 'No active room yet.' : fallback);
     } finally {
       if (mounted) {
         setState(() {
@@ -381,7 +394,9 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  _needsRoomSetup ? 'Join or create a room first' : _loadError!,
+                  _needsAuth
+                      ? 'Please sign in again'
+                      : (_needsRoomSetup ? 'Join or create a room first' : _loadError!),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 6),
@@ -392,7 +407,12 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 const SizedBox(height: 12),
-                if (_needsRoomSetup)
+                if (_needsAuth)
+                  FilledButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    child: const Text('Close'),
+                  )
+                else if (_needsRoomSetup)
                   FilledButton(
                     onPressed: _openRoomsTab,
                     child: const Text('Go to Rooms'),
