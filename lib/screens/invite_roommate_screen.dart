@@ -112,9 +112,8 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
     final uid = _currentUid;
     final email = _currentEmail;
     if (uid == null || uid.isEmpty || email == null || email.isEmpty) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Roommates')),
-        body: const Center(
+      return const Scaffold(
+        body: Center(
           child: Text('Please sign in again to manage invites.'),
         ),
       );
@@ -124,34 +123,97 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
       initialIndex: widget.initialTabIndex.clamp(0, 2),
       length: 3,
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Roommates'),
-          actions: [
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: FilledButton.icon(
-                onPressed: _openInviteSheet,
-                icon: const Icon(Icons.person_add_alt_1_rounded),
-                label: const Text('Invite'),
-              ),
-            ),
-          ],
-          bottom: const TabBar(
-            tabs: [
-              Tab(text: 'Sent'),
-              Tab(text: 'Received'),
-              Tab(text: 'Roommates'),
-            ],
-          ),
-        ),
         body: Container(
-          decoration: const BoxDecoration(gradient: AppTheme.screenGradient),
-          child: TabBarView(
-            children: [
-              _buildSentTab(uid),
-              _buildReceivedTab(email),
-              _buildRoommatesTab(uid),
-            ],
+          decoration: const BoxDecoration(gradient: AppTheme.heroGradient),
+          child: SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Roommates',
+                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                            ),
+                            Text(
+                              'Manage invites and accepted members',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Colors.white.withAlpha(220),
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      FilledButton.icon(
+                        onPressed: _openInviteSheet,
+                        icon: const Icon(Icons.person_add_alt_1_rounded),
+                        label: const Text('Invite'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: AppTheme.primaryAccentBlue,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: Container(
+                    width: double.infinity,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFFFF4EC),
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                    ),
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF2E6DA),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: const TabBar(
+                              indicatorSize: TabBarIndicatorSize.tab,
+                              dividerColor: Colors.transparent,
+                              indicator: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.all(Radius.circular(10)),
+                              ),
+                              labelColor: AppTheme.textPrimary,
+                              unselectedLabelColor: AppTheme.mutedText,
+                              tabs: [
+                                Tab(text: 'Sent'),
+                                Tab(text: 'Received'),
+                                Tab(text: 'Roommates'),
+                              ],
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: TabBarView(
+                            children: [
+                              _buildSentTab(uid),
+                              _buildReceivedTab(email),
+                              _buildRoommatesTab(uid),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

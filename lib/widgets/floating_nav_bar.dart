@@ -7,23 +7,18 @@ class FloatingNavBar extends StatelessWidget {
     super.key,
     required this.currentIndex,
     required this.onTap,
+    required this.onAddPressed,
   });
 
   final int currentIndex;
   final ValueChanged<int> onTap;
+  final VoidCallback onAddPressed;
 
   @override
   Widget build(BuildContext context) {
-    final items = const [
-      (icon: Icons.home_rounded, label: 'Home'),
-      (icon: Icons.bar_chart_rounded, label: 'Analytics'),
-      (icon: Icons.people_alt_rounded, label: 'Roommates'),
-      (icon: Icons.person_rounded, label: 'Profile'),
-    ];
-
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      margin: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
       decoration: BoxDecoration(
         color: const Color(0xFF2A201B),
         borderRadius: BorderRadius.circular(999),
@@ -36,51 +31,50 @@ class FloatingNavBar extends StatelessWidget {
         ],
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: List.generate(items.length, (index) {
-          final selected = index == currentIndex;
-          final item = items[index];
-          return Expanded(
-            child: InkWell(
-              borderRadius: BorderRadius.circular(999),
-              onTap: () => onTap(index),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(vertical: 9),
-                decoration: BoxDecoration(
-                  color: selected
-                      ? AppTheme.primaryAccentBlue
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(999),
+        children: [
+          _buildNavItem(icon: Icons.home_rounded, selected: currentIndex == 0, onPressed: () => onTap(0)),
+          _buildNavItem(icon: Icons.bar_chart_rounded, selected: currentIndex == 1, onPressed: () => onTap(1)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            child: SizedBox(
+              width: 44,
+              height: 44,
+              child: DecoratedBox(
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: AppTheme.heroGradient,
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      item.icon,
-                      size: 20,
-                      color: selected
-                          ? Colors.white
-                          : Colors.white70,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      item.label,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: selected
-                                ? Colors.white
-                                : Colors.white70,
-                            fontWeight:
-                                selected ? FontWeight.w700 : FontWeight.w500,
-                            fontSize: 11,
-                          ),
-                    ),
-                  ],
+                child: IconButton(
+                  onPressed: onAddPressed,
+                  icon: const Icon(Icons.add_rounded, color: Colors.white),
                 ),
               ),
             ),
-          );
-        }),
+          ),
+          _buildNavItem(icon: Icons.people_alt_rounded, selected: currentIndex == 2, onPressed: () => onTap(2)),
+          _buildNavItem(icon: Icons.person_rounded, selected: currentIndex == 3, onPressed: () => onTap(3)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNavItem({
+    required IconData icon,
+    required bool selected,
+    required VoidCallback onPressed,
+  }) {
+    return Expanded(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: onPressed,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Icon(
+            icon,
+            size: 20,
+            color: selected ? Colors.white : Colors.white70,
+          ),
+        ),
       ),
     );
   }

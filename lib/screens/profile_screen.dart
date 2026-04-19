@@ -123,27 +123,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Profile'),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: _isEditing
-                ? TextButton(
-                    onPressed: _isSaving ? null : () => setState(() => _isEditing = false),
-                    child: const Text('Cancel'),
-                  )
-                : FilledButton.icon(
-                    onPressed: () => setState(() => _isEditing = true),
-                    icon: const Icon(Icons.edit_rounded),
-                    label: const Text('Edit'),
-                  ),
-          ),
-        ],
-      ),
       body: Container(
-        decoration: const BoxDecoration(gradient: AppTheme.screenGradient),
+        decoration: const BoxDecoration(gradient: AppTheme.heroGradient),
         child: SafeArea(
+          bottom: false,
           child: StreamBuilder<UserProfileModel?>(
             stream: _firestoreService.watchCurrentUserProfile(),
             builder: (context, profileSnapshot) {
@@ -157,127 +140,93 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 _phoneController.text = profile.phoneNumber;
               }
 
-              return ListView(
-                padding: const EdgeInsets.all(16),
+              return Column(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      gradient: AppTheme.heroGradient,
-                      borderRadius: BorderRadius.circular(24),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x33FF7D4D),
-                          blurRadius: 16,
-                          offset: Offset(0, 8),
-                        ),
-                      ],
-                    ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
                     child: Row(
                       children: [
-                        Container(
-                          width: 56,
-                          height: 56,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withAlpha(220),
-                            shape: BoxShape.circle,
-                          ),
-                          alignment: Alignment.center,
+                        Expanded(
                           child: Text(
-                            _initialsFor(profile.fullName),
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                  color: AppTheme.primaryAccentBlue,
+                            'Profile',
+                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                  color: Colors.white,
                                   fontWeight: FontWeight.w800,
                                 ),
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                profile.fullName,
-                                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                profile.email,
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: Colors.white.withAlpha(220),
-                                    ),
-                              ),
-                              const SizedBox(height: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withAlpha(30),
-                                  borderRadius: BorderRadius.circular(999),
+                        _isEditing
+                            ? TextButton(
+                                onPressed: _isSaving ? null : () => setState(() => _isEditing = false),
+                                style: TextButton.styleFrom(foregroundColor: Colors.white),
+                                child: const Text('Cancel'),
+                              )
+                            : FilledButton.icon(
+                                onPressed: () => setState(() => _isEditing = true),
+                                icon: const Icon(Icons.edit_rounded),
+                                label: const Text('Edit'),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: Colors.white,
+                                  foregroundColor: AppTheme.primaryAccentBlue,
                                 ),
-                                child: Text(
+                              ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Container(
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withAlpha(35),
+                        borderRadius: BorderRadius.circular(22),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 56,
+                            height: 56,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              _initialsFor(profile.fullName),
+                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                    color: AppTheme.primaryAccentBlue,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  profile.fullName,
+                                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  profile.email,
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                        color: Colors.white.withAlpha(220),
+                                      ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
                                   'Member since ${DateFormat('MMM y').format(profile.createdAt)}',
                                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                         color: Colors.white,
                                         fontWeight: FontWeight.w600,
                                       ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  DarkCard(
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Personal Information', style: Theme.of(context).textTheme.titleLarge),
-                          const SizedBox(height: 4),
-                          Text(
-                            _isEditing
-                                ? 'Update your details and tap Save Changes.'
-                                : 'Your profile is synced across roommate activities.',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                          const SizedBox(height: 12),
-                          CustomTextField(
-                            label: 'Full Name',
-                            hintText: 'Full name',
-                            controller: _fullNameController,
-                            enabled: _isEditing && !_isSaving,
-                            validator: InputValidators.displayName,
-                            prefixIcon: Icons.person_outline_rounded,
-                          ),
-                          const SizedBox(height: 10),
-                          CustomTextField(
-                            label: 'Phone Number',
-                            hintText: '+63 ...',
-                            controller: _phoneController,
-                            keyboardType: TextInputType.phone,
-                            enabled: _isEditing && !_isSaving,
-                            prefixIcon: Icons.phone_outlined,
-                            validator: (value) {
-                              final trimmed = value?.trim() ?? '';
-                              if (trimmed.isEmpty) {
-                                return 'Phone number is required.';
-                              }
-                              return InputValidators.phone(value);
-                            },
-                          ),
-                          const SizedBox(height: 10),
-                          TextFormField(
-                            initialValue: profile.email,
-                            readOnly: true,
-                            decoration: const InputDecoration(
-                              labelText: 'Email',
-                              prefixIcon: Icon(Icons.mail_outline_rounded),
+                              ],
                             ),
                           ),
                         ],
@@ -285,28 +234,95 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  if (_isEditing)
-                    PrimaryButton(
-                      label: 'Save Changes',
-                      isLoading: _isSaving,
-                      onPressed: _save,
-                    ),
-                  const SizedBox(height: 10),
-                  OutlinedButton.icon(
-                    onPressed: _isSigningOut ? null : _signOut,
-                    icon: _isSigningOut
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.logout_rounded),
-                    label: const Text('Sign Out'),
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(50),
-                      foregroundColor: AppTheme.dangerRed,
-                      side: const BorderSide(color: AppTheme.dangerRed),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                  Expanded(
+                    child: Container(
+                      width: double.infinity,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFFFF4EC),
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                      ),
+                      child: ListView(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
+                        children: [
+                          DarkCard(
+                            child: Form(
+                              key: _formKey,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Personal Information', style: Theme.of(context).textTheme.titleLarge),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    _isEditing
+                                        ? 'Update your details and tap Save Changes.'
+                                        : 'Your profile is synced across roommate activities.',
+                                    style: Theme.of(context).textTheme.bodySmall,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  CustomTextField(
+                                    label: 'Full Name',
+                                    hintText: 'Full name',
+                                    controller: _fullNameController,
+                                    enabled: _isEditing && !_isSaving,
+                                    validator: InputValidators.displayName,
+                                    prefixIcon: Icons.person_outline_rounded,
+                                  ),
+                                  const SizedBox(height: 10),
+                                  CustomTextField(
+                                    label: 'Phone Number',
+                                    hintText: '+63 ...',
+                                    controller: _phoneController,
+                                    keyboardType: TextInputType.phone,
+                                    enabled: _isEditing && !_isSaving,
+                                    prefixIcon: Icons.phone_outlined,
+                                    validator: (value) {
+                                      final trimmed = value?.trim() ?? '';
+                                      if (trimmed.isEmpty) {
+                                        return 'Phone number is required.';
+                                      }
+                                      return InputValidators.phone(value);
+                                    },
+                                  ),
+                                  const SizedBox(height: 10),
+                                  TextFormField(
+                                    initialValue: profile.email,
+                                    readOnly: true,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Email',
+                                      prefixIcon: Icon(Icons.mail_outline_rounded),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          if (_isEditing)
+                            PrimaryButton(
+                              label: 'Save Changes',
+                              isLoading: _isSaving,
+                              onPressed: _save,
+                            ),
+                          const SizedBox(height: 10),
+                          OutlinedButton.icon(
+                            onPressed: _isSigningOut ? null : _signOut,
+                            icon: _isSigningOut
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : const Icon(Icons.logout_rounded),
+                            label: const Text('Sign Out'),
+                            style: OutlinedButton.styleFrom(
+                              minimumSize: const Size.fromHeight(50),
+                              foregroundColor: AppTheme.dangerRed,
+                              side: const BorderSide(color: AppTheme.dangerRed),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
