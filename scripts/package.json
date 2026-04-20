@@ -5,12 +5,13 @@
   "main": "generate-demo-data.js",
   "scripts": {
     "generate-demo": "node generate-demo-data.js",
-    "demo:generate": "node generate-demo-data.js"
+    "demo:generate": "node generate-demo-data.js",
+    "seed-demo": "node seed-demo-complete.js",
+    "demo:seed": "node seed-demo-complete.js"
   },
   "dependencies": {
-    "firebase-admin": "^11.10.1"
+    "firebase-admin": "^13.8.0"
   },
-  "devDependencies": {},
   "keywords": [
     "firebase",
     "demo",

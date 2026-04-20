@@ -119,13 +119,31 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
       final existing = widget.existingExpense;
       if (existing != null) {
         _titleController.text = existing.title;
-        _amountController.text = (existing.amountCents / 100).toStringAsFixed(2);
+        _amountController.text = (existing.amountCents / 100).toStringAsFixed(
+          2,
+        );
         _notesController.text = existing.notes ?? '';
         _selectedDate = existing.date;
         _dateController.text = _formatDate(existing.date);
-        _selectedCategory = existing.category;
+        // Validate category is in the allowed list
+        const validCategories = [
+          'rent',
+          'electricity',
+          'water',
+          'wifi',
+          'groceries',
+          'repairs',
+          'misc',
+        ];
+        _selectedCategory = validCategories.contains(existing.category)
+            ? existing.category
+            : 'misc';
         _splitType = existing.splitType;
         _paidByUserId = existing.paidByUserId;
+        // Validate paidByUserId exists in people list, otherwise use first person
+        if (!people.any((p) => p.id == _paidByUserId)) {
+          _paidByUserId = people.isNotEmpty ? people.first.id : null;
+        }
         _selectedParticipants
           ..clear()
           ..addAll(existing.participantUserIds);
@@ -150,14 +168,17 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
         fallback: 'Unable to load expense form right now.',
       );
       final raw = error.toString().toLowerCase();
-      final firebaseMessage =
-          error is FirebaseException ? (error.message ?? '').toLowerCase() : '';
-      final detectedNoRoom = raw.contains('no household') ||
+      final firebaseMessage = error is FirebaseException
+          ? (error.message ?? '').toLowerCase()
+          : '';
+      final detectedNoRoom =
+          raw.contains('no household') ||
           raw.contains('no active room') ||
           raw.contains('no active household membership') ||
           firebaseMessage.contains('no household') ||
           firebaseMessage.contains('no active household membership');
-      final detectedNoAuth = raw.contains('not authenticated') ||
+      final detectedNoAuth =
+          raw.contains('not authenticated') ||
           firebaseMessage.contains('not authenticated');
       _needsAuth = detectedNoAuth;
       _needsRoomSetup = detectedNoRoom;
@@ -189,15 +210,21 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
     if (profile == null) {
       return const [];
     }
-    final list = <_PersonOption>[
-      _PersonOption(id: profile.id, name: profile.fullName),
-    ];
+    final seenIds = <String>{};
+    final list = <_PersonOption>[];
+
+    // Add current user first
+    list.add(_PersonOption(id: profile.id, name: profile.fullName));
+    seenIds.add(profile.id);
+
+    // Add roommates, avoiding duplicates
     for (final roommate in _roommates) {
       final id = roommate.linkedUid;
-      if (id == null || id.isEmpty) {
+      if (id == null || id.isEmpty || seenIds.contains(id)) {
         continue;
       }
       list.add(_PersonOption(id: id, name: roommate.displayName));
+      seenIds.add(id);
     }
     return list;
   }
@@ -264,7 +291,9 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
     var percentageTotal = 0;
     var sharesTotal = 0;
 
-    for (final person in _people.where((p) => _selectedParticipants.contains(p.id))) {
+    for (final person in _people.where(
+      (p) => _selectedParticipants.contains(p.id),
+    )) {
       final raw = _splitControllers[person.id]?.text.trim() ?? '';
       int? exact;
       int? bps;
@@ -341,16 +370,23 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
         category: _selectedCategory,
         splitType: _splitType,
         participantUserIds: _selectedParticipants.toList(),
-        notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+        notes: _notesController.text.trim().isEmpty
+            ? null
+            : _notesController.text.trim(),
         splitConfig: splitConfig,
       );
-      await _firestoreService.upsertExpense(expense: expense, participants: participants);
+      await _firestoreService.upsertExpense(
+        expense: expense,
+        participants: participants,
+      );
       if (!mounted) {
         return;
       }
       showAppSnackBar(
         context,
-        message: widget.existingExpense == null ? 'Expense added.' : 'Expense updated.',
+        message: widget.existingExpense == null
+            ? 'Expense added.'
+            : 'Expense updated.',
         type: AppFeedbackType.success,
       );
       Navigator.of(context).pop(true);
@@ -360,7 +396,7 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
       }
       showAppSnackBar(
         context,
-        message: mapAppErrorMessage(error, fallback: 'Unable to save expense.'),
+        message: 'Unable to delete expense.',
         type: AppFeedbackType.error,
       );
     } finally {
@@ -369,6 +405,66 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
           _isSaving = false;
         });
       }
+    }
+  }
+
+  Future<void> _delete() async {
+    if (widget.existingExpense == null) {
+      return;
+    }
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Expense'),
+        content: const Text(
+          'Are you sure you want to delete this expense? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) {
+      return;
+    }
+    setState(() {
+      _isSaving = true;
+    });
+    try {
+      await _firestoreService.deleteExpense(widget.existingExpense!.id);
+      if (!mounted) {
+        return;
+      }
+      showAppSnackBar(
+        context,
+        message: 'Expense deleted.',
+        type: AppFeedbackType.success,
+      );
+      Navigator.of(context).pop(true);
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      showAppSnackBar(
+        context,
+        message: mapAppErrorMessage(
+          error,
+          fallback: 'Unable to delete expense.',
+        ),
+        type: AppFeedbackType.error,
+      );
+    } finally {
+      setState(() {
+        _isSaving = false;
+      });
     }
   }
 
@@ -396,7 +492,9 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
                 Text(
                   _needsAuth
                       ? 'Please sign in again'
-                      : (_needsRoomSetup ? 'Join or create a room first' : _loadError!),
+                      : (_needsRoomSetup
+                            ? 'Join or create a room first'
+                            : _loadError!),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 6),
@@ -436,6 +534,14 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
       );
     }
 
+    // Don't render form until profile is loaded and people list is populated
+    if (_currentProfile == null || _people.isEmpty) {
+      return const Material(
+        color: Colors.transparent,
+        child: Center(child: CircularProgressIndicator.adaptive()),
+      );
+    }
+
     final content = Container(
       decoration: const BoxDecoration(gradient: AppTheme.screenGradient),
       child: SafeArea(
@@ -453,10 +559,21 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
                       children: [
                         Expanded(
                           child: Text(
-                            widget.existingExpense == null ? 'Add Expense' : 'Edit Expense',
+                            widget.existingExpense == null
+                                ? 'Add Expense'
+                                : 'Edit Expense',
                             style: Theme.of(context).textTheme.titleLarge,
                           ),
                         ),
+                        if (widget.existingExpense != null &&
+                            widget.existingExpense!.createdByUserId ==
+                                _currentProfile?.id)
+                          IconButton(
+                            onPressed: _isSaving ? null : _delete,
+                            icon: const Icon(Icons.delete_outline_rounded),
+                            color: AppTheme.dangerRed,
+                            tooltip: 'Delete expense',
+                          ),
                         IconButton(
                           onPressed: () => Navigator.of(context).pop(false),
                           icon: const Icon(Icons.close_rounded),
@@ -467,7 +584,9 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
                   ],
                   if (!widget.asDialog) ...[
                     Text(
-                      widget.existingExpense == null ? 'Add Expense' : 'Edit Expense',
+                      widget.existingExpense == null
+                          ? 'Add Expense'
+                          : 'Edit Expense',
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                     const SizedBox(height: 10),
@@ -477,7 +596,9 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
                     hintText: 'Rent, groceries, water bill',
                     controller: _titleController,
                     prefixIcon: Icons.receipt_long_rounded,
-                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Title is required.' : null,
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? 'Title is required.'
+                        : null,
                   ),
                   const SizedBox(height: 12),
                   CustomTextField(
@@ -485,9 +606,15 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
                     hintText: '0.00',
                     controller: _amountController,
                     prefixIcon: Icons.payments_outlined,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
-                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Amount is required.' : null,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+                    ],
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? 'Amount is required.'
+                        : null,
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
@@ -496,37 +623,52 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
                       labelText: 'Category',
                       prefixIcon: Icon(Icons.category_outlined),
                     ),
-                    items: const [
-                      'rent',
-                      'electricity',
-                      'water',
-                      'wifi',
-                      'groceries',
-                      'repairs',
-                      'misc',
-                    ].map((category) {
-                      return DropdownMenuItem<String>(
-                        value: category,
-                        child: Text(category[0].toUpperCase() + category.substring(1)),
-                      );
-                    }).toList(),
-                    onChanged: (value) => setState(() => _selectedCategory = value ?? 'misc'),
+                    items:
+                        const [
+                          'rent',
+                          'electricity',
+                          'water',
+                          'wifi',
+                          'groceries',
+                          'repairs',
+                          'misc',
+                        ].map((category) {
+                          return DropdownMenuItem<String>(
+                            value: category,
+                            child: Text(
+                              category[0].toUpperCase() + category.substring(1),
+                            ),
+                          );
+                        }).toList(),
+                    onChanged: (value) =>
+                        setState(() => _selectedCategory = value ?? 'misc'),
                   ),
                   const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    initialValue: _paidByUserId,
-                    decoration: const InputDecoration(
-                      labelText: 'Paid by',
-                      prefixIcon: Icon(Icons.person_outline_rounded),
-                    ),
-                    items: _people
-                        .map((person) => DropdownMenuItem<String>(
+                  if (_people.isNotEmpty)
+                    DropdownButtonFormField<String>(
+                      initialValue: _people.any((p) => p.id == _paidByUserId)
+                          ? _paidByUserId
+                          : _people.first.id,
+                      decoration: const InputDecoration(
+                        labelText: 'Paid by',
+                        prefixIcon: Icon(Icons.person_outline_rounded),
+                      ),
+                      items: _people
+                          .map(
+                            (person) => DropdownMenuItem<String>(
                               value: person.id,
                               child: Text(person.name),
-                            ))
-                        .toList(),
-                    onChanged: (value) => setState(() => _paidByUserId = value),
-                  ),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() => _paidByUserId = value);
+                        }
+                      },
+                    )
+                  else
+                    const Text('Loading participants...'),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _dateController,
@@ -546,20 +688,35 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
                     ),
                     items: const [
                       DropdownMenuItem(value: 'equal', child: Text('Equal')),
-                      DropdownMenuItem(value: 'exact', child: Text('Exact amounts')),
-                      DropdownMenuItem(value: 'percentage', child: Text('Percentage')),
-                      DropdownMenuItem(value: 'shares', child: Text('Shares/weights')),
+                      DropdownMenuItem(
+                        value: 'exact',
+                        child: Text('Exact amounts'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'percentage',
+                        child: Text('Percentage'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'shares',
+                        child: Text('Shares/weights'),
+                      ),
                     ],
-                    onChanged: (value) => setState(() => _splitType = value ?? 'equal'),
+                    onChanged: (value) =>
+                        setState(() => _splitType = value ?? 'equal'),
                   ),
                   const SizedBox(height: 14),
-                  Text('Participants', style: Theme.of(context).textTheme.titleMedium),
+                  Text(
+                    'Participants',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
                     children: _people.map((person) {
-                      final selected = _selectedParticipants.contains(person.id);
+                      final selected = _selectedParticipants.contains(
+                        person.id,
+                      );
                       return FilterChip(
                         selected: selected,
                         label: Text(person.name),
@@ -577,23 +734,32 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
                   ),
                   if (_splitType != 'equal') ...[
                     const SizedBox(height: 12),
-                    ..._people.where((person) => _selectedParticipants.contains(person.id)).map((person) {
-                      final label = switch (_splitType) {
-                        'exact' => 'Exact amount',
-                        'percentage' => 'Percentage',
-                        'shares' => 'Shares',
-                        _ => 'Value',
-                      };
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: CustomTextField(
-                          label: '${person.name} - $label',
-                          hintText: _splitType == 'percentage' ? 'e.g. 25' : 'e.g. 1',
-                          controller: _splitControllers[person.id],
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        ),
-                      );
-                    }),
+                    ..._people
+                        .where(
+                          (person) => _selectedParticipants.contains(person.id),
+                        )
+                        .map((person) {
+                          final label = switch (_splitType) {
+                            'exact' => 'Exact amount',
+                            'percentage' => 'Percentage',
+                            'shares' => 'Shares',
+                            _ => 'Value',
+                          };
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: CustomTextField(
+                              label: '${person.name} - $label',
+                              hintText: _splitType == 'percentage'
+                                  ? 'e.g. 25'
+                                  : 'e.g. 1',
+                              controller: _splitControllers[person.id],
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                            ),
+                          );
+                        }),
                   ],
                   const SizedBox(height: 6),
                   CustomTextField(
@@ -604,7 +770,9 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
                   ),
                   const SizedBox(height: 16),
                   PrimaryButton(
-                    label: widget.existingExpense == null ? 'Add Expense' : 'Save Changes',
+                    label: widget.existingExpense == null
+                        ? 'Add Expense'
+                        : 'Save Changes',
                     isLoading: _isSaving,
                     onPressed: _submit,
                   ),

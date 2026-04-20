@@ -139,13 +139,21 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
       if (!mounted) {
         return;
       }
-      showAppSnackBar(context, message: 'Room created.', type: AppFeedbackType.success);
+      showAppSnackBar(
+        context,
+        message: 'Room created.',
+        type: AppFeedbackType.success,
+      );
       setState(() {});
     } catch (error) {
       if (!mounted) {
         return;
       }
-      showAppSnackBar(context, message: mapAppErrorMessage(error), type: AppFeedbackType.error);
+      showAppSnackBar(
+        context,
+        message: mapAppErrorMessage(error),
+        type: AppFeedbackType.error,
+      );
     }
   }
 
@@ -179,13 +187,21 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
       if (!mounted) {
         return;
       }
-      showAppSnackBar(context, message: 'Joined room.', type: AppFeedbackType.success);
+      showAppSnackBar(
+        context,
+        message: 'Joined room.',
+        type: AppFeedbackType.success,
+      );
       setState(() {});
     } catch (error) {
       if (!mounted) {
         return;
       }
-      showAppSnackBar(context, message: mapAppErrorMessage(error), type: AppFeedbackType.error);
+      showAppSnackBar(
+        context,
+        message: mapAppErrorMessage(error),
+        type: AppFeedbackType.error,
+      );
     }
   }
 
@@ -195,13 +211,21 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
       if (!mounted) {
         return;
       }
-      showAppSnackBar(context, message: 'Active room switched.', type: AppFeedbackType.success);
+      showAppSnackBar(
+        context,
+        message: 'Active room switched.',
+        type: AppFeedbackType.success,
+      );
       setState(() {});
     } catch (error) {
       if (!mounted) {
         return;
       }
-      showAppSnackBar(context, message: mapAppErrorMessage(error), type: AppFeedbackType.error);
+      showAppSnackBar(
+        context,
+        message: mapAppErrorMessage(error),
+        type: AppFeedbackType.error,
+      );
     }
   }
 
@@ -221,13 +245,21 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
       if (!mounted) {
         return;
       }
-      showAppSnackBar(context, message: 'Room left.', type: AppFeedbackType.success);
+      showAppSnackBar(
+        context,
+        message: 'Room left.',
+        type: AppFeedbackType.success,
+      );
       setState(() {});
     } catch (error) {
       if (!mounted) {
         return;
       }
-      showAppSnackBar(context, message: mapAppErrorMessage(error), type: AppFeedbackType.error);
+      showAppSnackBar(
+        context,
+        message: mapAppErrorMessage(error),
+        type: AppFeedbackType.error,
+      );
     }
   }
 
@@ -237,9 +269,7 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
     final email = _currentEmail;
     if (uid == null || uid.isEmpty || email == null || email.isEmpty) {
       return const Scaffold(
-        body: Center(
-          child: Text('Please sign in again to manage invites.'),
-        ),
+        body: Center(child: Text('Please sign in again to manage invites.')),
       );
     }
 
@@ -263,14 +293,16 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
                           children: [
                             Text(
                               'Roommates',
-                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                              style: Theme.of(context).textTheme.headlineSmall
+                                  ?.copyWith(
                                     color: Colors.white,
                                     fontWeight: FontWeight.w800,
                                   ),
                             ),
                             Text(
                               'Manage invites, members, and rooms',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
                                     color: Colors.white.withAlpha(220),
                                   ),
                             ),
@@ -281,12 +313,18 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
                         constraints: const BoxConstraints(minWidth: 96),
                         child: FilledButton.icon(
                           onPressed: _openInviteSheet,
-                          icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
+                          icon: const Icon(
+                            Icons.person_add_alt_1_rounded,
+                            size: 18,
+                          ),
                           label: const Text('Invite'),
                           style: FilledButton.styleFrom(
                             backgroundColor: Colors.white,
                             foregroundColor: AppTheme.primaryAccentBlue,
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
                           ),
                         ),
                       ),
@@ -298,7 +336,9 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
                     width: double.infinity,
                     decoration: const BoxDecoration(
                       color: Color(0xFFFFF4EC),
-                      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(28),
+                      ),
                     ),
                     child: Column(
                       children: [
@@ -313,12 +353,16 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
                             child: const TabBar(
                               isScrollable: true,
                               tabAlignment: TabAlignment.start,
-                              labelPadding: EdgeInsets.symmetric(horizontal: 14),
+                              labelPadding: EdgeInsets.symmetric(
+                                horizontal: 14,
+                              ),
                               indicatorSize: TabBarIndicatorSize.tab,
                               dividerColor: Colors.transparent,
                               indicator: BoxDecoration(
                                 color: Colors.white,
-                                borderRadius: BorderRadius.all(Radius.circular(10)),
+                                borderRadius: BorderRadius.all(
+                                  Radius.circular(10),
+                                ),
                               ),
                               labelColor: AppTheme.textPrimary,
                               unselectedLabelColor: AppTheme.mutedText,
@@ -401,7 +445,8 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
                 if (rooms.isEmpty)
                   const _SimpleInviteState(
                     title: 'No rooms yet',
-                    subtitle: 'Create or join a room to start splitting with a group.',
+                    subtitle:
+                        'Create or join a room to start splitting with a group.',
                     icon: Icons.groups_rounded,
                   )
                 else
@@ -541,10 +586,13 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
         }
         if (snapshot.hasError) {
           final message = _mapRoommatesError(snapshot.error!);
-          final noRoomState = message.toLowerCase().contains('no active room') ||
+          final noRoomState =
+              message.toLowerCase().contains('no active room') ||
               message.toLowerCase().contains('not an active member');
           return _SimpleInviteState(
-            title: noRoomState ? 'No active room yet' : 'Unable to load roommates',
+            title: noRoomState
+                ? 'No active room yet'
+                : 'Unable to load roommates',
             subtitle: message,
             icon: noRoomState ? Icons.groups_rounded : Icons.cloud_off_rounded,
             onAction: noRoomState ? null : () => setState(() {}),
@@ -637,7 +685,11 @@ class _SimpleInviteState extends StatelessWidget {
           children: [
             Icon(icon, color: AppTheme.primaryAccentBlue, size: 36),
             const SizedBox(height: 12),
-            Text(title, style: textTheme.titleMedium, textAlign: TextAlign.center),
+            Text(
+              title,
+              style: textTheme.titleMedium,
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 6),
             Text(
               subtitle,
@@ -689,9 +741,19 @@ class _RoomCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(room.name, style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+                        Text(
+                          room.name,
+                          style: textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                         const SizedBox(height: 2),
-                        Text('ID: ${room.id}', style: textTheme.bodySmall?.copyWith(color: Colors.grey)),
+                        Text(
+                          'ID: ${room.id}',
+                          style: textTheme.bodySmall?.copyWith(
+                            color: Colors.grey,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -710,7 +772,12 @@ class _RoomCard extends StatelessWidget {
               const SizedBox(height: 12),
               // Members section
               if (members.isNotEmpty) ...[
-                Text('Members (${members.length})', style: textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600)),
+                Text(
+                  'Members (${members.length})',
+                  style: textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
@@ -718,7 +785,10 @@ class _RoomCard extends StatelessWidget {
                   children: members
                       .map(
                         (member) => Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
                             color: const Color(0xFFF2E6DA),
                             borderRadius: BorderRadius.circular(8),
@@ -726,7 +796,11 @@ class _RoomCard extends StatelessWidget {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.person_rounded, size: 16, color: Colors.grey[600]),
+                              Icon(
+                                Icons.person_rounded,
+                                size: 16,
+                                color: Colors.grey[600],
+                              ),
                               const SizedBox(width: 6),
                               Flexible(
                                 child: Text(
@@ -790,12 +864,13 @@ class InviteTile extends StatelessWidget {
         children: [
           Row(
             children: [
-              Expanded(
-                child: Text(title, style: textTheme.titleMedium),
-              ),
+              Expanded(child: Text(title, style: textTheme.titleMedium)),
               const SizedBox(width: 12),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: _statusBackground(status),
                   borderRadius: BorderRadius.circular(999),
@@ -813,12 +888,7 @@ class InviteTile extends StatelessWidget {
           const SizedBox(height: 8),
           Row(
             children: [
-              Expanded(
-                child: Text(
-                  subtitle,
-                  style: textTheme.bodySmall,
-                ),
-              ),
+              Expanded(child: Text(subtitle, style: textTheme.bodySmall)),
               const SizedBox(width: 12),
               if (trailing != null) trailing!,
             ],
@@ -833,10 +903,7 @@ class InviteTile extends StatelessWidget {
     if (item == null) {
       return const [];
     }
-    return [
-      const SizedBox(width: 8),
-      Flexible(child: item),
-    ];
+    return [const SizedBox(width: 8), Flexible(child: item)];
   }
 
   Color _statusBackground(String value) {

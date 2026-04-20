@@ -9,17 +9,22 @@ import '../models/user_profile_model.dart';
 
 class FirestoreService {
   FirestoreService({FirebaseFirestore? firestore, FirebaseAuth? auth})
-      : _firestore = firestore ?? FirebaseFirestore.instance,
-        _auth = auth ?? FirebaseAuth.instance;
+    : _firestore = firestore ?? FirebaseFirestore.instance,
+      _auth = auth ?? FirebaseAuth.instance;
 
   final FirebaseFirestore _firestore;
   final FirebaseAuth _auth;
 
-  CollectionReference<Map<String, dynamic>> get _usersRef => _firestore.collection('users');
-  CollectionReference<Map<String, dynamic>> get _householdsRef => _firestore.collection('households');
-  CollectionReference<Map<String, dynamic>> get _membersRef => _firestore.collection('household_members');
-  CollectionReference<Map<String, dynamic>> get _expensesRef => _firestore.collection('expenses');
-  CollectionReference<Map<String, dynamic>> get _invitesRef => _firestore.collection('invites');
+  CollectionReference<Map<String, dynamic>> get _usersRef =>
+      _firestore.collection('users');
+  CollectionReference<Map<String, dynamic>> get _householdsRef =>
+      _firestore.collection('households');
+  CollectionReference<Map<String, dynamic>> get _membersRef =>
+      _firestore.collection('household_members');
+  CollectionReference<Map<String, dynamic>> get _expensesRef =>
+      _firestore.collection('expenses');
+  CollectionReference<Map<String, dynamic>> get _invitesRef =>
+      _firestore.collection('invites');
 
   String _requireUid() {
     final uid = _auth.currentUser?.uid;
@@ -43,7 +48,8 @@ class FirestoreService {
     return email;
   }
 
-  DocumentReference<Map<String, dynamic>> userDoc(String uid) => _usersRef.doc(uid);
+  DocumentReference<Map<String, dynamic>> userDoc(String uid) =>
+      _usersRef.doc(uid);
 
   Future<void> createUserProfileAfterSignUp({
     required String fullName,
@@ -131,7 +137,9 @@ class FirestoreService {
 
     final membershipDoc = await _membersRef.doc('${householdId}_$uid').get();
     final membershipData = membershipDoc.data();
-    final isActive = (membershipData?['status'] as String? ?? '').trim().toLowerCase() == 'active';
+    final isActive =
+        (membershipData?['status'] as String? ?? '').trim().toLowerCase() ==
+        'active';
     if (!membershipDoc.exists || !isActive) {
       throw FirebaseException(
         plugin: 'cloud_firestore',
@@ -151,7 +159,8 @@ class FirestoreService {
 
     final rooms = <RoomModel>[];
     for (final member in memberships.docs) {
-      final householdId = (member.data()['householdId'] as String? ?? '').trim();
+      final householdId = (member.data()['householdId'] as String? ?? '')
+          .trim();
       if (householdId.isEmpty) {
         continue;
       }
@@ -288,30 +297,38 @@ class FirestoreService {
   }
 
   Stream<List<RoommateModel>> getRoommatesStream(String uid) {
-    final stream = Stream.fromFuture(getCurrentHouseholdId()).asyncExpand((householdId) {
+    final stream = Stream.fromFuture(getCurrentHouseholdId()).asyncExpand((
+      householdId,
+    ) {
       return _membersRef
           .where('householdId', isEqualTo: householdId)
           .where('status', isEqualTo: 'active')
           .snapshots()
           .map((snapshot) {
-        final items = snapshot.docs
-            .map((doc) => doc.data())
-            .where((data) => (data['userId'] as String? ?? '').trim().isNotEmpty)
-            .where((data) => (data['userId'] as String).trim() != uid)
-            .map((data) {
-          final linkedUid = (data['userId'] as String).trim();
-          final displayName = (data['fullName'] as String? ?? '').trim();
-          final email = (data['email'] as String? ?? '').trim();
-          return RoommateModel(
-            id: linkedUid,
-            email: email,
-            displayName: displayName.isEmpty ? email : displayName,
-            linkedUid: linkedUid,
-          );
-        }).toList()
-          ..sort((a, b) => a.displayName.compareTo(b.displayName));
-        return items;
-      });
+            final items =
+                snapshot.docs
+                    .map((doc) => doc.data())
+                    .where(
+                      (data) =>
+                          (data['userId'] as String? ?? '').trim().isNotEmpty,
+                    )
+                    .where((data) => (data['userId'] as String).trim() != uid)
+                    .map((data) {
+                      final linkedUid = (data['userId'] as String).trim();
+                      final displayName = (data['fullName'] as String? ?? '')
+                          .trim();
+                      final email = (data['email'] as String? ?? '').trim();
+                      return RoommateModel(
+                        id: linkedUid,
+                        email: email,
+                        displayName: displayName.isEmpty ? email : displayName,
+                        linkedUid: linkedUid,
+                      );
+                    })
+                    .toList()
+                  ..sort((a, b) => a.displayName.compareTo(b.displayName));
+            return items;
+          });
     });
     return stream.asBroadcastStream();
   }
@@ -323,64 +340,77 @@ class FirestoreService {
         .where('householdId', isEqualTo: householdId)
         .where('status', isEqualTo: 'active')
         .get();
-    final roommates = snapshot.docs
-        .map((doc) => doc.data())
-        .where((data) => (data['userId'] as String? ?? '').trim().isNotEmpty)
-        .where((data) => (data['userId'] as String).trim() != uid)
-        .map((data) {
-          final linkedUid = (data['userId'] as String).trim();
-          final displayName = (data['fullName'] as String? ?? '').trim();
-          final email = (data['email'] as String? ?? '').trim();
-          return RoommateModel(
-            id: linkedUid,
-            email: email,
-            displayName: displayName.isEmpty ? email : displayName,
-            linkedUid: linkedUid,
-          );
-        })
-        .toList()
-      ..sort((a, b) => a.displayName.compareTo(b.displayName));
+    final roommates =
+        snapshot.docs
+            .map((doc) => doc.data())
+            .where(
+              (data) => (data['userId'] as String? ?? '').trim().isNotEmpty,
+            )
+            .where((data) => (data['userId'] as String).trim() != uid)
+            .map((data) {
+              final linkedUid = (data['userId'] as String).trim();
+              final displayName = (data['fullName'] as String? ?? '').trim();
+              final email = (data['email'] as String? ?? '').trim();
+              return RoommateModel(
+                id: linkedUid,
+                email: email,
+                displayName: displayName.isEmpty ? email : displayName,
+                linkedUid: linkedUid,
+              );
+            })
+            .toList()
+          ..sort((a, b) => a.displayName.compareTo(b.displayName));
     return roommates;
   }
 
   Stream<List<ExpenseModel>> getExpensesStream(String uid) {
     // Kept method signature for compatibility.
-    final stream = Stream.fromFuture(getCurrentHouseholdId()).asyncExpand((householdId) {
+    final stream = Stream.fromFuture(getCurrentHouseholdId()).asyncExpand((
+      householdId,
+    ) {
       return _expensesRef
           .where('householdId', isEqualTo: householdId)
-          .orderBy('date', descending: true)
           .snapshots()
           .map((snapshot) {
-        return snapshot.docs
-            .map((doc) => ExpenseModel.fromMap(doc.id, doc.data()))
-            .toList();
-      });
+            final expenses = snapshot.docs
+                .map((doc) => ExpenseModel.fromMap(doc.id, doc.data()))
+                .toList();
+            // Sort in-memory to avoid Firestore composite index requirement
+            expenses.sort((a, b) => b.date.compareTo(a.date));
+            return expenses;
+          });
     });
     return stream.asBroadcastStream();
   }
 
-  Stream<List<ExpenseParticipantModel>> getExpenseParticipantsStream(String expenseId) {
+  Stream<List<ExpenseParticipantModel>> getExpenseParticipantsStream(
+    String expenseId,
+  ) {
     return _expensesRef
         .doc(expenseId)
         .collection('expense_participants')
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs
-          .map((doc) => ExpenseParticipantModel.fromMap(doc.data()))
-          .toList();
-    });
+          return snapshot.docs
+              .map((doc) => ExpenseParticipantModel.fromMap(doc.data()))
+              .toList();
+        });
   }
 
-  Future<List<ExpenseParticipantModel>> getExpenseParticipants(String expenseId) async {
-    final snapshot = await _expensesRef.doc(expenseId).collection('expense_participants').get();
+  Future<List<ExpenseParticipantModel>> getExpenseParticipants(
+    String expenseId,
+  ) async {
+    final snapshot = await _expensesRef
+        .doc(expenseId)
+        .collection('expense_participants')
+        .get();
     return snapshot.docs
         .map((doc) => ExpenseParticipantModel.fromMap(doc.data()))
         .toList();
   }
 
-  Future<Map<String, List<ExpenseParticipantModel>>> getParticipantsMapForExpenses(
-    List<ExpenseModel> expenses,
-  ) async {
+  Future<Map<String, List<ExpenseParticipantModel>>>
+  getParticipantsMapForExpenses(List<ExpenseModel> expenses) async {
     final result = <String, List<ExpenseParticipantModel>>{};
     for (final expense in expenses) {
       result[expense.id] = await getExpenseParticipants(expense.id);
@@ -394,14 +424,12 @@ class FirestoreService {
   }) async {
     final uid = _requireUid();
     final householdId = await getCurrentHouseholdId();
-    final ref = expense.id.isEmpty ? _expensesRef.doc() : _expensesRef.doc(expense.id);
+    final ref = expense.id.isEmpty
+        ? _expensesRef.doc()
+        : _expensesRef.doc(expense.id);
 
     final payload = expense
-        .copyWith(
-          id: ref.id,
-          createdByUserId: uid,
-          householdId: householdId,
-        )
+        .copyWith(id: ref.id, createdByUserId: uid, householdId: householdId)
         .toMap();
     payload['createdAt'] = expense.id.isEmpty
         ? FieldValue.serverTimestamp()
@@ -423,7 +451,10 @@ class FirestoreService {
     await upsertExpense(expense: expense, participants: const []);
   }
 
-  Future<void> updateExpense(String expenseId, Map<String, dynamic> updatedData) async {
+  Future<void> updateExpense(
+    String expenseId,
+    Map<String, dynamic> updatedData,
+  ) async {
     await _expensesRef.doc(expenseId).update({
       ...updatedData,
       'updatedAt': FieldValue.serverTimestamp(),
@@ -432,7 +463,9 @@ class FirestoreService {
 
   Future<void> deleteExpense(String expenseId) async {
     final expenseRef = _expensesRef.doc(expenseId);
-    final participants = await expenseRef.collection('expense_participants').get();
+    final participants = await expenseRef
+        .collection('expense_participants')
+        .get();
     for (final doc in participants.docs) {
       await doc.reference.delete();
     }
@@ -483,22 +516,25 @@ class FirestoreService {
         .where('householdId', isEqualTo: roomIdTrim)
         .where('status', isEqualTo: 'active')
         .get();
-    final members = snapshot.docs
-        .map((doc) => doc.data())
-        .where((data) => (data['userId'] as String? ?? '').trim().isNotEmpty)
-        .map((data) {
-          final linkedUid = (data['userId'] as String).trim();
-          final displayName = (data['fullName'] as String? ?? '').trim();
-          final email = (data['email'] as String? ?? '').trim();
-          return RoommateModel(
-            id: linkedUid,
-            email: email,
-            displayName: displayName.isEmpty ? email : displayName,
-            linkedUid: linkedUid,
-          );
-        })
-        .toList()
-      ..sort((a, b) => a.displayName.compareTo(b.displayName));
+    final members =
+        snapshot.docs
+            .map((doc) => doc.data())
+            .where(
+              (data) => (data['userId'] as String? ?? '').trim().isNotEmpty,
+            )
+            .map((data) {
+              final linkedUid = (data['userId'] as String).trim();
+              final displayName = (data['fullName'] as String? ?? '').trim();
+              final email = (data['email'] as String? ?? '').trim();
+              return RoommateModel(
+                id: linkedUid,
+                email: email,
+                displayName: displayName.isEmpty ? email : displayName,
+                linkedUid: linkedUid,
+              );
+            })
+            .toList()
+          ..sort((a, b) => a.displayName.compareTo(b.displayName));
     return members;
   }
 }
