@@ -1,0 +1,201 @@
+{
+  "users": {
+    "user_demo_john_001": {
+      "id": "user_demo_john_001",
+      "fullName": "John Doe",
+      "email": "john@example.com",
+      "phoneNumber": "+1-555-0100",
+      "householdId": "household_user_demo_john_001",
+      "createdAt": "2024-02-20T10:00:00Z",
+      "updatedAt": "2024-04-20T15:30:00Z"
+    },
+    "user_demo_sarah_002": {
+      "id": "user_demo_sarah_002",
+      "fullName": "Sarah Smith",
+      "email": "sarah@example.com",
+      "phoneNumber": "+1-555-0101",
+      "householdId": "household_user_demo_john_001",
+      "createdAt": "2024-02-25T10:00:00Z",
+      "updatedAt": "2024-04-20T15:30:00Z"
+    },
+    "user_demo_mike_003": {
+      "id": "user_demo_mike_003",
+      "fullName": "Mike Johnson",
+      "email": "mike@example.com",
+      "phoneNumber": "+1-555-0102",
+      "householdId": "household_user_demo_john_001",
+      "createdAt": "2024-03-01T10:00:00Z",
+      "updatedAt": "2024-04-20T15:30:00Z"
+    }
+  },
+  "households": {
+    "household_user_demo_john_001": {
+      "id": "household_user_demo_john_001",
+      "name": "Downtown Apartment",
+      "ownerUid": "user_demo_john_001",
+      "createdAt": "2024-02-20T10:00:00Z",
+      "updatedAt": "2024-04-20T15:30:00Z"
+    }
+  },
+  "household_members": {
+    "household_user_demo_john_001_user_demo_john_001": {
+      "householdId": "household_user_demo_john_001",
+      "userId": "user_demo_john_001",
+      "fullName": "John Doe",
+      "email": "john@example.com",
+      "role": "owner",
+      "status": "active",
+      "joinedAt": "2024-02-20T10:00:00Z"
+    },
+    "household_user_demo_john_001_user_demo_sarah_002": {
+      "householdId": "household_user_demo_john_001",
+      "userId": "user_demo_sarah_002",
+      "fullName": "Sarah Smith",
+      "email": "sarah@example.com",
+      "role": "member",
+      "status": "active",
+      "joinedAt": "2024-02-25T10:00:00Z"
+    },
+    "household_user_demo_john_001_user_demo_mike_003": {
+      "householdId": "household_user_demo_john_001",
+      "userId": "user_demo_mike_003",
+      "fullName": "Mike Johnson",
+      "email": "mike@example.com",
+      "role": "member",
+      "status": "active",
+      "joinedAt": "2024-03-01T10:00:00Z"
+    }
+  },
+  "expenses": [
+    {
+      "householdId": "household_user_demo_john_001",
+      "title": "Grocery Shopping",
+      "amountCents": 12500,
+      "paidByUserId": "user_demo_john_001",
+      "paidByName": "John Doe",
+      "createdByUserId": "user_demo_john_001",
+      "date": "2024-04-13T00:00:00Z",
+      "category": "groceries",
+      "splitType": "equal",
+      "participantUserIds": [
+        "user_demo_john_001",
+        "user_demo_sarah_002",
+        "user_demo_mike_003"
+      ],
+      "notes": "Weekly groceries for the household",
+      "createdAt": "2024-04-20T15:30:00Z",
+      "updatedAt": "2024-04-20T15:30:00Z"
+    },
+    {
+      "householdId": "household_user_demo_john_001",
+      "title": "Electricity Bill",
+      "amountCents": 18000,
+      "paidByUserId": "user_demo_sarah_002",
+      "paidByName": "Sarah Smith",
+      "createdByUserId": "user_demo_sarah_002",
+      "date": "2024-04-15T00:00:00Z",
+      "category": "utilities",
+      "splitType": "equal",
+      "participantUserIds": [
+        "user_demo_john_001",
+        "user_demo_sarah_002",
+        "user_demo_mike_003"
+      ],
+      "notes": "Monthly electricity bill",
+      "createdAt": "2024-04-20T15:30:00Z",
+      "updatedAt": "2024-04-20T15:30:00Z"
+    },
+    {
+      "householdId": "household_user_demo_john_001",
+      "title": "Internet & Cable",
+      "amountCents": 9999,
+      "paidByUserId": "user_demo_mike_003",
+      "paidByName": "Mike Johnson",
+      "createdByUserId": "user_demo_mike_003",
+      "date": "2024-04-17T00:00:00Z",
+      "category": "utilities",
+      "splitType": "equal",
+      "participantUserIds": [
+        "user_demo_john_001",
+        "user_demo_sarah_002",
+        "user_demo_mike_003"
+      ],
+      "notes": "Monthly internet and cable subscription",
+      "createdAt": "2024-04-20T15:30:00Z",
+      "updatedAt": "2024-04-20T15:30:00Z"
+    },
+    {
+      "householdId": "household_user_demo_john_001",
+      "title": "Pizza Night",
+      "amountCents": 3500,
+      "paidByUserId": "user_demo_john_001",
+      "paidByName": "John Doe",
+      "createdByUserId": "user_demo_john_001",
+      "date": "2024-04-18T00:00:00Z",
+      "category": "food",
+      "splitType": "equal",
+      "participantUserIds": [
+        "user_demo_john_001",
+        "user_demo_sarah_002",
+        "user_demo_mike_003"
+      ],
+      "notes": "Friday pizza dinner",
+      "createdAt": "2024-04-20T15:30:00Z",
+      "updatedAt": "2024-04-20T15:30:00Z"
+    },
+    {
+      "householdId": "household_user_demo_john_001",
+      "title": "Cleaning Supplies",
+      "amountCents": 4200,
+      "paidByUserId": "user_demo_sarah_002",
+      "paidByName": "Sarah Smith",
+      "createdByUserId": "user_demo_sarah_002",
+      "date": "2024-04-19T00:00:00Z",
+      "category": "household",
+      "splitType": "equal",
+      "participantUserIds": [
+        "user_demo_john_001",
+        "user_demo_sarah_002",
+        "user_demo_mike_003"
+      ],
+      "notes": "Cleaning products and supplies",
+      "createdAt": "2024-04-20T15:30:00Z",
+      "updatedAt": "2024-04-20T15:30:00Z"
+    }
+  ],
+  "invites": [
+    {
+      "senderUid": "user_demo_john_001",
+      "senderEmail": "john@example.com",
+      "senderDisplayName": "John Doe",
+      "recipientEmail": "pending@example.com",
+      "recipientEmailNormalized": "pending@example.com",
+      "status": "pending",
+      "createdAt": "2024-04-17T10:00:00Z",
+      "message": "Hey! Would love to split expenses with you. Join our household!"
+    },
+    {
+      "senderUid": "user_demo_john_001",
+      "senderEmail": "john@example.com",
+      "senderDisplayName": "John Doe",
+      "recipientUid": "user_demo_sarah_002",
+      "recipientEmail": "sarah@example.com",
+      "recipientEmailNormalized": "sarah@example.com",
+      "recipientDisplayName": "Sarah Smith",
+      "status": "accepted",
+      "createdAt": "2024-02-25T10:00:00Z",
+      "acceptedAt": "2024-02-26T10:00:00Z",
+      "message": "Join me in splitting household expenses!"
+    },
+    {
+      "senderUid": "user_demo_mike_003",
+      "senderEmail": "mike@example.com",
+      "senderDisplayName": "Mike Johnson",
+      "recipientEmail": "rejected@example.com",
+      "recipientEmailNormalized": "rejected@example.com",
+      "status": "rejected",
+      "createdAt": "2024-04-10T10:00:00Z",
+      "rejectedAt": "2024-04-11T10:00:00Z"
+    }
+  ]
+}

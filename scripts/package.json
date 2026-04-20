@@ -1,0 +1,21 @@
+{
+  "name": "kwartx-scripts",
+  "version": "1.0.0",
+  "description": "Utility scripts for KwartX",
+  "main": "generate-demo-data.js",
+  "scripts": {
+    "generate-demo": "node generate-demo-data.js",
+    "demo:generate": "node generate-demo-data.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^11.10.1"
+  },
+  "devDependencies": {},
+  "keywords": [
+    "firebase",
+    "demo",
+    "data"
+  ],
+  "author": "",
+  "license": "MIT"
+}
