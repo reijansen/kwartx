@@ -408,35 +408,13 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
                   ...rooms.map((room) {
                     final isActive = room.id == activeRoomId;
                     return Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: DarkCard(
-                        radius: 16,
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(room.name, style: Theme.of(context).textTheme.titleMedium),
-                                  const SizedBox(height: 4),
-                                  Text('ID: ${room.id}', style: Theme.of(context).textTheme.bodySmall),
-                                ],
-                              ),
-                            ),
-                            if (isActive)
-                              const Chip(label: Text('Active'))
-                            else
-                              TextButton(
-                                onPressed: () => _switchRoom(room.id),
-                                child: const Text('Switch'),
-                              ),
-                            IconButton(
-                              tooltip: 'Leave room',
-                              onPressed: () => _leaveRoom(room.id),
-                              icon: const Icon(Icons.exit_to_app_rounded),
-                            ),
-                          ],
-                        ),
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _RoomCard(
+                        room: room,
+                        isActive: isActive,
+                        onSwitch: () => _switchRoom(room.id),
+                        onLeave: () => _leaveRoom(room.id),
+                        firestoreService: _firestoreService,
                       ),
                     );
                   }),
@@ -481,7 +459,7 @@ class _InviteRoommateScreenState extends State<InviteRoommateScreen> {
               subtitle: 'Sent ${_dateFormatter.format(invite.createdAt)}',
               status: _statusLabel(invite.status),
               trailing: invite.isPending
-                  ? TextButton(
+                  ? OutlinedButton(
                       onPressed: () => _cancelInvite(invite.id),
                       child: const Text('Cancel'),
                     )
@@ -677,6 +655,117 @@ class _SimpleInviteState extends StatelessWidget {
   }
 }
 
+class _RoomCard extends StatelessWidget {
+  const _RoomCard({
+    required this.room,
+    required this.isActive,
+    required this.onSwitch,
+    required this.onLeave,
+    required this.firestoreService,
+  });
+
+  final RoomModel room;
+  final bool isActive;
+  final VoidCallback onSwitch;
+  final VoidCallback onLeave;
+  final FirestoreService firestoreService;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return FutureBuilder<List<RoommateModel>>(
+      future: firestoreService.getRoomMembers(room.id),
+      builder: (context, membersSnapshot) {
+        final members = membersSnapshot.data ?? const <RoommateModel>[];
+        return DarkCard(
+          radius: 16,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header with room name and status
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(room.name, style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 2),
+                        Text('ID: ${room.id}', style: textTheme.bodySmall?.copyWith(color: Colors.grey)),
+                      ],
+                    ),
+                  ),
+                  if (isActive)
+                    const Chip(
+                      label: Text('Active'),
+                      backgroundColor: Color(0xFFE8F8ED),
+                    )
+                  else
+                    TextButton(
+                      onPressed: onSwitch,
+                      child: const Text('Switch'),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              // Members section
+              if (members.isNotEmpty) ...[
+                Text('Members (${members.length})', style: textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: members
+                      .map(
+                        (member) => Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF2E6DA),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.person_rounded, size: 16, color: Colors.grey[600]),
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  member.displayName,
+                                  style: textTheme.bodySmall,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+                const SizedBox(height: 12),
+              ],
+              // Action buttons
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: onLeave,
+                    icon: const Icon(Icons.exit_to_app_rounded, size: 18),
+                    label: const Text('Leave'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppTheme.dangerRed,
+                      side: const BorderSide(color: AppTheme.dangerRed),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
 class InviteTile extends StatelessWidget {
   const InviteTile({
     super.key,
@@ -697,12 +786,14 @@ class InviteTile extends StatelessWidget {
     return DarkCard(
       radius: 16,
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Expanded(
                 child: Text(title, style: textTheme.titleMedium),
               ),
+              const SizedBox(width: 12),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
@@ -719,7 +810,7 @@ class InviteTile extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 8),
           Row(
             children: [
               Expanded(
@@ -728,7 +819,8 @@ class InviteTile extends StatelessWidget {
                   style: textTheme.bodySmall,
                 ),
               ),
-              ..._trailingWidgets(),
+              const SizedBox(width: 12),
+              if (trailing != null) trailing!,
             ],
           ),
         ],

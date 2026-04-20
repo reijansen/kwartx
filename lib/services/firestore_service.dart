@@ -473,4 +473,32 @@ class FirestoreService {
         .get();
     return snapshot.docs.map((doc) => doc.data()).toList();
   }
+
+  Future<List<RoommateModel>> getRoomMembers(String roomId) async {
+    final roomIdTrim = roomId.trim();
+    if (roomIdTrim.isEmpty) {
+      return [];
+    }
+    final snapshot = await _membersRef
+        .where('householdId', isEqualTo: roomIdTrim)
+        .where('status', isEqualTo: 'active')
+        .get();
+    final members = snapshot.docs
+        .map((doc) => doc.data())
+        .where((data) => (data['userId'] as String? ?? '').trim().isNotEmpty)
+        .map((data) {
+          final linkedUid = (data['userId'] as String).trim();
+          final displayName = (data['fullName'] as String? ?? '').trim();
+          final email = (data['email'] as String? ?? '').trim();
+          return RoommateModel(
+            id: linkedUid,
+            email: email,
+            displayName: displayName.isEmpty ? email : displayName,
+            linkedUid: linkedUid,
+          );
+        })
+        .toList()
+      ..sort((a, b) => a.displayName.compareTo(b.displayName));
+    return members;
+  }
 }
