@@ -48,6 +48,22 @@ app.*.map.json
 # Firebase native config files
 android/app/google-services.json
 ios/Runner/GoogleService-Info.plist
+
+# Firebase credentials and config
+config/
+*.json.example
+
+# Android build artifacts
+android/.kotlin/
+
+# Node.js dependencies (for seeding scripts)
+scripts/node_modules/
+scripts/package-lock.json
+
+# Generated guides and helper scripts
+PROFESSOR_DEMO_GUIDE.md
+*-seed-*.bat
+*-seed-*.sh
 macos/Runner/GoogleService-Info.plist
 
 # Local verification logs
