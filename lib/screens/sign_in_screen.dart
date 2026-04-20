@@ -215,10 +215,7 @@ class _SignInScreenState extends State<SignInScreen> {
       'Password reset email sent. Please check your inbox.',
       type: AppFeedbackType.success,
     );
-    _showMessage(
-      'Password reset email sent.',
-      type: AppFeedbackType.success,
-    );
+    _showMessage('Password reset email sent.', type: AppFeedbackType.success);
   }
 
   @override
@@ -265,10 +262,7 @@ class _SignInScreenState extends State<SignInScreen> {
             const SizedBox(height: 10),
             if (_inlineMessage != null) ...[
               const SizedBox(height: 10),
-              AppInlineFeedback(
-                message: _inlineMessage!,
-                type: _inlineType,
-              ),
+              AppInlineFeedback(message: _inlineMessage!, type: _inlineType),
             ],
             const SizedBox(height: 24),
             PrimaryButton(
@@ -278,32 +272,41 @@ class _SignInScreenState extends State<SignInScreen> {
             ),
             const SizedBox(height: 18),
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Expanded(
-                  child: Wrap(
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      Text('No account? ', style: textTheme.bodyMedium),
-                      TextButton(
-                        onPressed: _isLoading ? null : widget.onNavigateToSignUp,
-                        style: TextButton.styleFrom(padding: EdgeInsets.zero),
-                        child: const Text(
-                          'Sign Up',
-                          style: TextStyle(
-                            color: AppTheme.secondaryAccentBlue,
-                            fontWeight: FontWeight.w600,
-                          ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text('No account? ', style: textTheme.bodyMedium),
+                    TextButton(
+                      onPressed: _isLoading ? null : widget.onNavigateToSignUp,
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      child: Text(
+                        'Sign Up',
+                        style: textTheme.bodyMedium?.copyWith(
+                          color: AppTheme.secondaryAccentBlue,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
                 TextButton(
                   onPressed: _isLoading ? null : _handleForgotPassword,
-                  style: TextButton.styleFrom(padding: EdgeInsets.zero),
-                  child: const Text(
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  child: Text(
                     'Forgot Password?',
-                    style: TextStyle(
+                    style: textTheme.bodyMedium?.copyWith(
                       color: AppTheme.secondaryAccentBlue,
                       fontWeight: FontWeight.w600,
                     ),
