@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
 import '../widgets/floating_nav_bar.dart';
+import '../widgets/radial_hero.dart';
 import 'analytics_screen.dart';
 import 'expense_form_screen.dart';
 import 'home_screen.dart';
@@ -21,7 +22,17 @@ class _HomeShellScreenState extends State<HomeShellScreen> {
   int _index = 0;
 
   Future<void> _openAddExpense() async {
-    await ExpenseFormScreen.show(context);
+    Navigator.of(context).push(
+      AppRadialPageRoute<void>(
+        builder: (_) => const ExpenseFormScreen(
+          asDialog: false,
+          heroTag: 'hero_fab_add',
+        ),
+        duration: appAnimationsEnabled(context)
+            ? const Duration(milliseconds: 350)
+            : Duration.zero,
+      ),
+    );
   }
 
   @override

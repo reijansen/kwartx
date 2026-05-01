@@ -15,8 +15,11 @@ import '../services/settlement_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import '../widgets/app_feedback.dart';
+import '../widgets/radial_hero.dart';
 import 'expense_form_screen.dart';
+import 'expense_detail_screen.dart';
 import 'invite_roommate_screen.dart';
+import 'settlement_detail_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, required this.authService});
@@ -36,6 +39,20 @@ class _HomeScreenState extends State<HomeScreen> {
     await ExpenseFormScreen.show(
       context,
       existingExpense: expense,
+    );
+  }
+
+  Future<void> _openExpenseDetail(ExpenseModel expense) async {
+    final enabled = appAnimationsEnabled(context);
+    Navigator.of(context).push(
+      AppRadialPageRoute<void>(
+        builder: (_) => ExpenseDetailScreen(
+          expense: expense,
+          heroTag: 'hero_expense_${expense.id}',
+        ),
+        duration: enabled ? const Duration(milliseconds: 400) : Duration.zero,
+        blurBackground: true,
+      ),
     );
   }
 
@@ -115,11 +132,14 @@ class _HomeScreenState extends State<HomeScreen> {
               if (settlementItems.isNotEmpty) ...[
                 Text('Balance Updates', style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 8),
-                ...settlementItems.map((tx) {
+                ...settlementItems.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final tx = entry.value;
                   final isDebtor = tx.fromUserId == profile.id;
-                  final label = isDebtor
-                      ? 'You owe ${tx.toName}'
-                      : '${tx.fromName} owes you';
+                  final label = isDebtor ? 'You owe ${tx.toName}' : '${tx.fromName} owes you';
+                  final heroTag = 'hero_settlement_${tx.fromUserId}_${tx.toUserId}_${tx.amountCents}_$index';
+                  final enabled = appAnimationsEnabled(context);
+
                   return ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: CircleAvatar(
@@ -130,12 +150,42 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     title: Text(label),
-                    trailing: Text(
-                      Formatters.currency(tx.amountCents / 100),
-                      style: TextStyle(
-                        color: isDebtor ? AppTheme.dangerRed : AppTheme.successGreen,
-                        fontWeight: FontWeight.w700,
-                      ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          Formatters.currency(tx.amountCents / 100),
+                          style: TextStyle(
+                            color: isDebtor ? AppTheme.dangerRed : AppTheme.successGreen,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        InkWell(
+                          customBorder: const CircleBorder(),
+                          onTap: () {
+                            Navigator.of(context).push(
+                              AppRadialPageRoute<void>(
+                                builder: (_) => SettlementDetailScreen(settlement: tx, heroTag: heroTag),
+                                duration: enabled ? const Duration(milliseconds: 400) : Duration.zero,
+                              ),
+                            );
+                          },
+                          child: RadialHero(
+                            tag: heroTag,
+                            enabled: enabled,
+                            maxRadius: 24,
+                            child: CircleAvatar(
+                              radius: 18,
+                              backgroundColor: (isDebtor ? AppTheme.dangerRed : AppTheme.successGreen).withAlpha(20),
+                              child: Icon(
+                                Icons.chevron_right_rounded,
+                                color: isDebtor ? AppTheme.dangerRed : AppTheme.successGreen,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   );
                 }),
@@ -324,7 +374,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       child: _PendingBillCard(
                                         expense: expense,
                                         status: status,
-                                        onTap: () => _openExpenseForm(expense: expense),
+                                        onTap: () => _openExpenseDetail(expense),
                                         onDelete: () => _deleteExpense(expense),
                                       ),
                                     );
@@ -655,14 +705,19 @@ class _PendingBillCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFEAD9),
-                      borderRadius: BorderRadius.circular(999),
+                  RadialHero(
+                    tag: 'hero_expense_${expense.id}',
+                    enabled: appAnimationsEnabled(context),
+                    maxRadius: 22,
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFEAD9),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: const Icon(Icons.home_work_rounded, color: AppTheme.primaryAccentBlue),
                     ),
-                    child: const Icon(Icons.home_work_rounded, color: AppTheme.primaryAccentBlue),
                   ),
                   const SizedBox(width: 10),
                   Expanded(

@@ -13,6 +13,7 @@ import '../widgets/app_feedback.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/dark_card.dart';
 import '../widgets/primary_button.dart';
+import '../widgets/radial_hero.dart';
 import 'invite_roommate_screen.dart';
 
 class ExpenseFormScreen extends StatefulWidget {
@@ -20,10 +21,12 @@ class ExpenseFormScreen extends StatefulWidget {
     super.key,
     this.existingExpense,
     this.asDialog = false,
+    this.heroTag,
   });
 
   final ExpenseModel? existingExpense;
   final bool asDialog;
+  final String? heroTag;
 
   static Future<bool?> show(
     BuildContext context, {
@@ -548,12 +551,43 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
         top: !widget.asDialog,
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
-          child: DarkCard(
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (!widget.asDialog && (widget.heroTag ?? '').trim().isNotEmpty) ...[
+                Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.arrow_back_rounded),
+                    ),
+                    const Spacer(),
+                    RadialHero(
+                      tag: widget.heroTag!.trim(),
+                      enabled: appAnimationsEnabled(context),
+                      maxRadius: 34,
+                      child: Container(
+                        width: 52,
+                        height: 52,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: AppTheme.heroGradient,
+                        ),
+                        child: const Icon(Icons.add_rounded, color: Colors.white),
+                      ),
+                    ),
+                    const Spacer(),
+                    const SizedBox(width: 48),
+                  ],
+                ),
+                const SizedBox(height: 10),
+              ],
+              DarkCard(
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
                   if (widget.asDialog) ...[
                     Row(
                       children: [
@@ -776,9 +810,11 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
                     isLoading: _isSaving,
                     onPressed: _submit,
                   ),
-                ],
+                    ],
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
         ),
       ),

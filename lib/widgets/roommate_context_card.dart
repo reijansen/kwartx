@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../models/roommate_model.dart';
+import '../screens/roommate_detail_screen.dart';
 import '../theme/app_theme.dart';
 import 'dark_card.dart';
+import 'radial_hero.dart';
 
 class RoommateContextCard extends StatelessWidget {
   const RoommateContextCard({
@@ -57,15 +59,42 @@ class RoommateContextCard extends StatelessWidget {
             runSpacing: 8,
             children: roommates.take(6).map((roommate) {
               final initials = _initials(roommate.displayName);
+              final heroTag = 'hero_roommate_${roommate.id}';
               return Chip(
                 avatar: CircleAvatar(
                   backgroundColor: AppTheme.secondaryAccentBlue.withAlpha(45),
-                  child: Text(
-                    initials,
-                    style: const TextStyle(
-                      color: AppTheme.textPrimary,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: () {
+                      final enabled = appAnimationsEnabled(context);
+                      Navigator.of(context).push(
+                        AppRadialPageRoute<void>(
+                          builder: (_) => RoommateDetailScreen(
+                            roommate: roommate,
+                            heroTag: heroTag,
+                          ),
+                          duration: enabled
+                              ? const Duration(milliseconds: 460)
+                              : Duration.zero,
+                        ),
+                      );
+                    },
+                    child: RadialHero(
+                      tag: heroTag,
+                      enabled: appAnimationsEnabled(context),
+                      maxRadius: 26,
+                      child: CircleAvatar(
+                        radius: 22,
+                        backgroundColor: Colors.transparent,
+                        child: Text(
+                          initials,
+                          style: const TextStyle(
+                            color: AppTheme.textPrimary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),

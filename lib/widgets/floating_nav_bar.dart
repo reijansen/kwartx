@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import 'radial_hero.dart';
 
 class FloatingNavBar extends StatelessWidget {
   const FloatingNavBar({
@@ -39,14 +40,19 @@ class FloatingNavBar extends StatelessWidget {
             child: SizedBox(
               width: 44,
               height: 44,
-              child: DecoratedBox(
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: AppTheme.heroGradient,
-                ),
-                child: IconButton(
-                  onPressed: onAddPressed,
-                  icon: const Icon(Icons.add_rounded, color: Colors.white),
+              child: RadialHero(
+                tag: 'hero_fab_add',
+                enabled: appAnimationsEnabled(context),
+                maxRadius: 28,
+                child: DecoratedBox(
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: AppTheme.heroGradient,
+                  ),
+                  child: IconButton(
+                    onPressed: onAddPressed,
+                    icon: const Icon(Icons.add_rounded, color: Colors.white),
+                  ),
                 ),
               ),
             ),
