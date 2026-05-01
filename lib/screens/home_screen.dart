@@ -15,8 +15,8 @@ import '../services/settlement_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import '../widgets/app_feedback.dart';
-import '../widgets/balance_hero_card.dart';
 import '../widgets/radial_hero.dart';
+import 'balance_detail_screen.dart';
 import 'expense_form_screen.dart';
 import 'expense_detail_screen.dart';
 import 'invite_roommate_screen.dart';
@@ -53,6 +53,16 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         duration: enabled ? const Duration(milliseconds: 400) : Duration.zero,
         blurBackground: true,
+      ),
+    );
+  }
+
+  Future<void> _openBalanceDetail({required String heroTag}) async {
+    final enabled = appAnimationsEnabled(context);
+    Navigator.of(context).push(
+      AppRadialPageRoute<void>(
+        builder: (_) => BalanceDetailScreen(heroTag: heroTag),
+        duration: enabled ? const Duration(milliseconds: 500) : Duration.zero,
       ),
     );
   }
@@ -307,29 +317,6 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           );
 
-                          final householdTotalCents = expenses.fold<int>(
-                            0,
-                            (sum, expense) => sum + expense.amountCents,
-                          );
-                          final now = DateTime.now();
-                          final monthTotalCents = expenses
-                              .where(
-                                (expense) =>
-                                    expense.date.year == now.year &&
-                                    expense.date.month == now.month,
-                              )
-                              .fold<int>(
-                                0,
-                                (sum, expense) => sum + expense.amountCents,
-                              );
-                          final topPayer = balances.isEmpty
-                              ? null
-                              : (balances.toList()
-                                    ..sort(
-                                      (a, b) => b.paidCents.compareTo(a.paidCents),
-                                    ))
-                                  .first;
-
                           return RefreshIndicator(
                             color: AppTheme.primaryAccentBlue,
                             onRefresh: () async => setState(() {}),
@@ -364,6 +351,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                         title: 'You Owe',
                                         amount: Formatters.currency(currentBucket.youOweCents / 100),
                                         icon: Icons.north_east_rounded,
+                                        heroTag: 'hero_balance_you_owe',
+                                        onTap: () => _openBalanceDetail(heroTag: 'hero_balance_you_owe'),
                                       ),
                                     ),
                                     const SizedBox(width: 10),
@@ -372,16 +361,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                         title: 'Owes you',
                                         amount: Formatters.currency(currentBucket.youAreOwedCents / 100),
                                         icon: Icons.south_west_rounded,
+                                        heroTag: 'hero_balance_owes_you',
+                                        onTap: () => _openBalanceDetail(heroTag: 'hero_balance_owes_you'),
                                       ),
                                     ),
                                   ],
-                                ),
-                                const SizedBox(height: 12),
-                                BalanceHeroCard(
-                                  netBalanceCents: currentBucket.netCents,
-                                  monthTotalCents: monthTotalCents,
-                                  householdTotalCents: householdTotalCents,
-                                  topPayerLabel: topPayer?.fullName ?? '—',
                                 ),
                                 const SizedBox(height: 14),
                                 _SectionHeader(
@@ -624,15 +608,19 @@ class _MiniBalanceCard extends StatelessWidget {
     required this.title,
     required this.amount,
     required this.icon,
+    this.heroTag,
+    this.onTap,
   });
 
   final String title;
   final String amount;
   final IconData icon;
+  final String? heroTag;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final card = Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
         color: const Color(0xFF171616),
@@ -648,12 +636,17 @@ class _MiniBalanceCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            amount,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                ),
+          RadialHero(
+            tag: (heroTag ?? '').trim().isEmpty ? 'hero_balance_fallback' : heroTag!.trim(),
+            enabled: appAnimationsEnabled(context) && (heroTag ?? '').trim().isNotEmpty,
+            maxRadius: 48,
+            child: Text(
+              amount,
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
           ),
           const SizedBox(height: 3),
           Row(
@@ -670,6 +663,19 @@ class _MiniBalanceCard extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+
+    if (onTap == null) {
+      return card;
+    }
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: card,
       ),
     );
   }
