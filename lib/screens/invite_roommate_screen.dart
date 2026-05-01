@@ -890,7 +890,7 @@ class InviteTile extends StatelessWidget {
             children: [
               Expanded(child: Text(subtitle, style: textTheme.bodySmall)),
               const SizedBox(width: 12),
-              if (trailing != null) trailing!,
+              ..._trailingWidgets(),
             ],
           ),
         ],
@@ -903,7 +903,7 @@ class InviteTile extends StatelessWidget {
     if (item == null) {
       return const [];
     }
-    return [const SizedBox(width: 8), Flexible(child: item)];
+    return [item];
   }
 
   Color _statusBackground(String value) {

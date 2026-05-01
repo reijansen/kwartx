@@ -15,6 +15,7 @@ import '../services/settlement_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import '../widgets/app_feedback.dart';
+import '../widgets/balance_hero_card.dart';
 import '../widgets/radial_hero.dart';
 import 'expense_form_screen.dart';
 import 'expense_detail_screen.dart';
@@ -306,6 +307,29 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           );
 
+                          final householdTotalCents = expenses.fold<int>(
+                            0,
+                            (sum, expense) => sum + expense.amountCents,
+                          );
+                          final now = DateTime.now();
+                          final monthTotalCents = expenses
+                              .where(
+                                (expense) =>
+                                    expense.date.year == now.year &&
+                                    expense.date.month == now.month,
+                              )
+                              .fold<int>(
+                                0,
+                                (sum, expense) => sum + expense.amountCents,
+                              );
+                          final topPayer = balances.isEmpty
+                              ? null
+                              : (balances.toList()
+                                    ..sort(
+                                      (a, b) => b.paidCents.compareTo(a.paidCents),
+                                    ))
+                                  .first;
+
                           return RefreshIndicator(
                             color: AppTheme.primaryAccentBlue,
                             onRefresh: () async => setState(() {}),
@@ -351,6 +375,13 @@ class _HomeScreenState extends State<HomeScreen> {
                                       ),
                                     ),
                                   ],
+                                ),
+                                const SizedBox(height: 12),
+                                BalanceHeroCard(
+                                  netBalanceCents: currentBucket.netCents,
+                                  monthTotalCents: monthTotalCents,
+                                  householdTotalCents: householdTotalCents,
+                                  topPayerLabel: topPayer?.fullName ?? '—',
                                 ),
                                 const SizedBox(height: 14),
                                 _SectionHeader(
